@@ -1,25 +1,54 @@
 import React from 'react';
-import { Text, TouchableOpacity, ScrollView } from 'react-native';
+import {
+    Text,
+    TouchableOpacity,
+    ScrollView,
+    ImageBackground,
+    View,
+} from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import type { RootStackParamList } from '../types/navigation';
 
 type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
 
+const categories = [
+    {
+        id: '1',
+        name: 'Restaurant',
+        image: require('../assets/images/restaurant-bg.png'),
+    },
+    {
+        id: '2',
+        name: 'Soins et beauté',
+        image: require('../assets/images/coiffeur-bg.png'),
+    },
+    {
+        id: '3',
+        name: 'Activité',
+        image: require('../assets/images/activites-bg.png'),
+    },
+];
+
 const HomeScreen: React.FC = () => {
     const navigation = useNavigation<NavigationProp>();
-    const categories = ['Restaurant', 'Soins et beauté', 'Activité'];
 
     return (
-        <ScrollView className="flex-1 bg-white p-4">
-            <Text className="text-xl font-bold text-center mb-6">On réserve quoi ?</Text>
+        <ScrollView className="flex-1 bg-white pt-8 px-4 pb-4">
+            <Text className="text-lg font-bold text-center mb-8">On réserve quoi ?</Text>
             {categories.map((item) => (
                 <TouchableOpacity
-                    key={item}
-                    className="rounded-xl bg-gray-200 h-32 mb-4 justify-center items-center"
-                    onPress={() => navigation.navigate('Booking')}
-                >
-                    <Text className="text-white text-xl font-bold italic drop-shadow-md">{item}</Text>
+                    key={item.id}
+                    className="rounded-xl h-48 mb-4 overflow-hidden"
+                    onPress={() => navigation.navigate('Booking')}>
+                    <ImageBackground
+                        source={item.image}
+                        resizeMode="cover"
+                        className="flex-1 justify-center items-center">
+                        <Text className="text-white text-2xl font-black italic">
+                            {item.name}
+                        </Text>
+                    </ImageBackground>
                 </TouchableOpacity>
             ))}
         </ScrollView>

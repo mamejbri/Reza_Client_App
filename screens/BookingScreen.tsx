@@ -22,8 +22,8 @@ const BookingScreen: React.FC = () => {
             resizeMode="cover"
             className="flex-1">
             <View className="flex-1 justify-center items-center p-4">
-                <Text className="text-2xl text-white font-bold text-center mb-14">Book ta réza</Text>
-                <View className="flex-row items-center justify-between mb-14">
+                <Text className="text-2xl text-white font-bold text-center mb-3.5">Book ta réza</Text>
+                <View className="flex-row items-center justify-between mb-3.5">
                     <Text className="text-white font-light italic">Simple</Text>
                     <View className="w-[6px] h-[6px] rounded-full bg-white mx-[22px]" />
                     <Text className="text-white font-light italic">Immédiat</Text>
@@ -34,16 +34,11 @@ const BookingScreen: React.FC = () => {
                     <TextInput
                         placeholder="Nom du restaurant, Type ..."
                         placeholderTextColor="#000"
+                        className="text-base flex-1 italic"
                         value={query}
                         onChangeText={(text) => {
                             setQuery(text);
                             setShowSuggestions(true);
-                        }}
-                        style={{
-                            flex: 1,
-                            fontSize: 16,
-                            fontStyle: 'italic',
-                            color: '#000',
                         }}
                     />
                     <IcoMoonIcon name="search" size={38} color="#000" />

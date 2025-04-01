@@ -9,7 +9,7 @@
 }
 
 .btn-primary {
-    @apply h-72 px-4 py-[15px] bg-danger rounded-md justify-center items-center;
+    @apply h-72 px-4 py-4 bg-danger rounded-md justify-center items-center;
 }
 
 .btn-primary-text {
@@ -17,7 +17,7 @@
 }
 
 .btn-outline {
-    @apply h-72 px-4 py-[15px] border border-danger bg-transparent rounded-md justify-center items-center;
+    @apply h-72 px-4 py-4 border border-danger bg-transparent rounded-md justify-center items-center;
 }
 
 .btn-outline-text {
@@ -25,7 +25,7 @@
 }
 
 .btn-black {
-    @apply h-72 px-4 py-[15px] bg-black rounded-md justify-center items-center;
+    @apply h-72 px-4 py-4 bg-black rounded-md justify-center items-center;
 }
 
 .btn-black-text {
@@ -59,5 +59,5 @@
 /* Input */
 
 .input-base {
-    @apply h-72 px-[17px] py-[10px] bg-black-3 rounded-md text-base text-black;
+    @apply h-72 px-4 py-2.5 bg-black-3 rounded-md text-base text-black;
 }

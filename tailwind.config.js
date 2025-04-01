@@ -15,10 +15,6 @@ module.exports = {
         white: '#FFFFFF',
       },
       spacing: {
-        10: '10px',
-        14: '14px',
-        17: '17px',
-        42: '42px',
         52: '52px',
         55: '55px',
         72: '72px',
@@ -27,7 +23,8 @@ module.exports = {
         md: '16px',
       },
       backgroundColor: {
-        'black-3': '#0000000A',
+        'black-3': 'rgba(0,0,0,0.04)',
+        'black-12': 'rgba(0,0,0,0.12)',
       },
       fontSize: {
         base: ['16px', '20px'],
