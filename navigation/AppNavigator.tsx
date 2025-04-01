@@ -13,7 +13,7 @@ const Stack = createNativeStackNavigator<RootStackParamList>();
 const AppNavigator = () => (
   <Stack.Navigator initialRouteName="Home">
     <Stack.Screen name="Home" component={HomeScreen} options={{ header: () => <Navbar /> }} />
-    <Stack.Screen name="Booking" component={BookingScreen} options={{ header: () => <Navbar /> }} />
+    <Stack.Screen name="Booking" component={BookingScreen} options={{ headerTransparent: true, header: () => <Navbar transparent /> }} />
     <Stack.Screen name="Login" component={LoginScreen} options={{ header: () => <Navbar /> }} />
     <Stack.Screen name="Signup" component={SignupScreen} options={{ header: () => <Navbar /> }} />
     <Stack.Screen name="Appointments" component={AppointmentsScreen} options={{ header: () => <Navbar /> }} />

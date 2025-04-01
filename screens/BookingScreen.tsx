@@ -1,6 +1,9 @@
 import React, { useState } from 'react';
-import { View, Text, TextInput, TouchableOpacity } from 'react-native';
+import { View, Text, TextInput, TouchableOpacity, ImageBackground } from 'react-native';
+import IcoMoonIcon from '../src/icons/IcoMoonIcon';
 import { mockSuggestions, getPreviousSearches } from '../services/suggestionService';
+
+const background = require('../assets/images/background.png');
 
 const BookingScreen: React.FC = () => {
     const [query, setQuery] = useState<string>('');
@@ -14,27 +17,48 @@ const BookingScreen: React.FC = () => {
     ];
 
     return (
-        <View className="flex-1 bg-white p-4">
-            <Text className="text-2xl font-bold text-center mb-4">Book ta réza</Text>
-            <TextInput
-                placeholder="Nom du restaurant, Type ..."
-                value={query}
-                onChangeText={(text) => {
-                    setQuery(text);
-                    setShowSuggestions(true);
-                }}
-                className="bg-gray-100 p-3 rounded-xl mb-2"
-            />
-            {showSuggestions && (
-                <View className="bg-white border border-gray-200 rounded-lg">
-                    {filtered.map((item, index) => (
-                        <TouchableOpacity key={index} className="p-3 border-b border-gray-100">
-                            <Text>{item}</Text>
-                        </TouchableOpacity>
-                    ))}
+        <ImageBackground
+            source={background}
+            resizeMode="cover"
+            className="flex-1">
+            <View className="flex-1 justify-center items-center p-4">
+                <Text className="text-2xl text-white font-bold text-center mb-14">Book ta réza</Text>
+                <View className="flex-row items-center justify-between mb-14">
+                    <Text className="text-white font-light italic">Simple</Text>
+                    <View className="w-[6px] h-[6px] rounded-full bg-white mx-[22px]" />
+                    <Text className="text-white font-light italic">Immédiat</Text>
+                    <View className="w-[6px] h-[6px] rounded-full bg-white mx-[22px]" />
+                    <Text className="text-white font-light italic">24h/24</Text>
                 </View>
-            )}
-        </View>
+                <View className="flex-row items-center w-full h-[78px] bg-white/70 rounded-xl px-[20px] py-[16px] mb-2">
+                    <TextInput
+                        placeholder="Nom du restaurant, Type ..."
+                        placeholderTextColor="#000"
+                        value={query}
+                        onChangeText={(text) => {
+                            setQuery(text);
+                            setShowSuggestions(true);
+                        }}
+                        style={{
+                            flex: 1,
+                            fontSize: 16,
+                            fontStyle: 'italic',
+                            color: '#000',
+                        }}
+                    />
+                    <IcoMoonIcon name="search" size={38} color="#000" />
+                </View>
+                {showSuggestions && (
+                    <View className="bg-white border border-gray-200 rounded-lg">
+                        {filtered.map((item, index) => (
+                            <TouchableOpacity key={index} className="p-3 border-b border-gray-100">
+                                <Text>{item}</Text>
+                            </TouchableOpacity>
+                        ))}
+                    </View>
+                )}
+            </View>
+        </ImageBackground>
     );
 };
 
