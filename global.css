@@ -56,6 +56,10 @@
     @apply text-black text-base font-bold;
 }
 
+.btn-smallest-icon {
+    @apply h-[40] w-[40] bg-danger rounded-full flex-row items-center justify-center;
+}
+
 /* Input */
 
 .input-base {

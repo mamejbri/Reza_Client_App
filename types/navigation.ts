@@ -3,5 +3,7 @@ export type RootStackParamList = {
     Booking: undefined;
     Login: undefined;
     Signup: undefined;
+    Appointments: undefined;
+    ReservationDetail: { reservation: any };
   };
   

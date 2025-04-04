@@ -51,7 +51,7 @@ const AppointmentsScreen: React.FC = () => {
                             data={reservations}
                             keyExtractor={(item) => item.id}
                             renderItem={({ item }) => (
-                                <View className="mb-4 rounded-2xl overflow-hidden bg-gray-100 shadow">
+                                <TouchableOpacity className="mb-4 rounded-2xl overflow-hidden bg-gray-100 shadow" onPress={() => navigation.navigate('ReservationDetail', { reservation: item })}>
                                     <Image source={item.image} className="w-full h-40" resizeMode="cover" />
                                     <View className="py-4 px-2.5 gap-3">
                                         <Text className="text-lg font-bold">{item.name}</Text>
@@ -76,7 +76,7 @@ const AppointmentsScreen: React.FC = () => {
                                             </View>
                                         </View>
                                     </View>
-                                </View>
+                                </TouchableOpacity>
                             )}
                         />
                     ) : (

@@ -5,6 +5,7 @@ import BookingScreen from '../screens/BookingScreen';
 import LoginScreen from '../screens/LoginScreen';
 import SignupScreen from '../screens/SignupScreen';
 import AppointmentsScreen from '../screens/AppointmentsScreen';
+import ReservationDetailScreen from '../screens/ReservationDetailScreen';
 import Navbar from '../components/Navbar';
 import type { RootStackParamList } from '../types/navigation';
 
@@ -17,6 +18,7 @@ const AppNavigator = () => (
     <Stack.Screen name="Login" component={LoginScreen} options={{ header: () => <Navbar /> }} />
     <Stack.Screen name="Signup" component={SignupScreen} options={{ header: () => <Navbar /> }} />
     <Stack.Screen name="Appointments" component={AppointmentsScreen} options={{ header: () => <Navbar /> }} />
+    <Stack.Screen name="ReservationDetail" component={ReservationDetailScreen} options={{ header: () => <Navbar /> }} />
   </Stack.Navigator>
 );
 
