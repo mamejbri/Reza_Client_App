@@ -3,6 +3,7 @@ import { View, Text, ScrollView, TouchableOpacity, Image, Alert } from 'react-na
 import { useNavigation, useRoute } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import type { RootStackParamList } from '../types/navigation';
+import CustomCalendarModal from '../components/CustomCalendarModal';
 import IcoMoonIcon from '../src/icons/IcoMoonIcon';
 
 type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
@@ -18,6 +19,7 @@ const ReservationDetailScreen = () => {
     const [date, setDate] = useState('Lundi. 7 fev 2025');
     const [time, setTime] = useState('13:30');
     const [moment, setMoment] = useState('Midi');
+    const [showCalendar, setShowCalendar] = useState(false);
 
     const handleCancel = () => {
         Alert.alert(
@@ -126,7 +128,7 @@ const ReservationDetailScreen = () => {
                 ) : (
                     <>
                         {/* Tab Buttons */}
-                        <ScrollView horizontal className="flex-row mt-6 mb-4">
+                        <ScrollView horizontal className="flex-row my-6">
                             {['rendezvous', 'menu', 'avis', 'apropos'].map((t) => (
                                 <TouchableOpacity
                                     key={t}
@@ -171,7 +173,9 @@ const ReservationDetailScreen = () => {
                                     <View className="rounded-2xl overflow-hidden bg-gray-100 shadow">
                                         <View className="py-5 px-3 gap-3">
                                             <View className="flex-row items-center justify-center gap-2">
-                                                <Text className="text-base font-bold">{date}</Text>
+                                                <TouchableOpacity onPress={() => setShowCalendar(true)}>
+                                                    <Text className="text-base font-bold">{date}</Text>
+                                                </TouchableOpacity>
                                             </View>
                                         </View>
                                     </View>
@@ -207,7 +211,7 @@ const ReservationDetailScreen = () => {
                         {/* Menu Tab */}
                         {activeEditTab === 'menu' && (
                             <View>
-                                <Image source={require('../assets/images/logo.png')} className="w-full h-96 rounded-xl" />
+                                <Image source={require('../assets/images/menu.png')} className="w-full h-96 rounded-xl" />
                             </View>
                         )}
 
@@ -224,9 +228,8 @@ const ReservationDetailScreen = () => {
                         {activeEditTab === 'apropos' && (
                             <View className="pb-4">
                                 <ScrollView horizontal className="flex-row mb-9">
-                                    <Image source={require('../assets/images/logo.png')} className="w-[335] h-[195] rounded-xl mr-4" />
-                                    <Image source={require('../assets/images/logo.png')} className="w-[335] h-[195] rounded-xl mr-4" />
-                                    <Image source={require('../assets/images/logo.png')} className="w-[335] h-[195] rounded-xl mr-4" />
+                                    <Image source={require('../assets/images/info1.png')} className="w-[335] h-[195] rounded-xl mr-4" />
+                                    <Image source={require('../assets/images/info2.png')} className="w-[335] h-[195] rounded-xl mr-4" />
                                 </ScrollView>
                                 <Text className="text-lg font-semibold pl-3 mb-6">À propos de nous</Text>
                                 <Text className="text-base font-bold mb-4">
@@ -249,7 +252,17 @@ const ReservationDetailScreen = () => {
                     </>
                 )}
             </View>
+
+            <CustomCalendarModal
+                visible={showCalendar}
+                onClose={() => setShowCalendar(false)}
+                onSelectDate={(newDate) => setDate(newDate)}
+                selectedDate="2025-04-02" // format: YYYY-MM-DD
+                disabledDates={['2025-04-08', '2025-04-15']} // fully booked dates
+            />
+
         </ScrollView>
+
     );
 };
 
