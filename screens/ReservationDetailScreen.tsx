@@ -4,6 +4,7 @@ import { useNavigation, useRoute } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import type { RootStackParamList } from '../types/navigation';
 import CustomCalendarModal from '../components/CustomCalendarModal';
+import CancelReservationModal from '../components/CancelReservationModal';
 import IcoMoonIcon from '../src/icons/IcoMoonIcon';
 
 type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
@@ -20,20 +21,15 @@ const ReservationDetailScreen = () => {
     const [time, setTime] = useState('13:30');
     const [moment, setMoment] = useState('Midi');
     const [showCalendar, setShowCalendar] = useState(false);
+    const [showCancelModal, setShowCancelModal] = useState(false);
 
     const handleCancel = () => {
-        Alert.alert(
-            'Annuler ma réza',
-            'Voulez-vous vraiment annuler votre réservation ?',
-            [
-                { text: 'Garder ma réza', style: 'cancel' },
-                {
-                    text: 'Annuler ma réza',
-                    style: 'destructive',
-                    onPress: () => navigation.navigate('Appointments'),
-                },
-            ]
-        );
+        setShowCancelModal(true);
+    };
+
+    const onConfirmCancel = () => {
+        setShowCancelModal(false);
+        navigation.navigate('Appointments');
     };
 
     return (
@@ -123,6 +119,12 @@ const ReservationDetailScreen = () => {
                             <TouchableOpacity onPress={handleCancel} className="btn-black">
                                 <Text className="btn-black-text">Annuler ma Réza</Text>
                             </TouchableOpacity>
+
+                            <CancelReservationModal
+                                isVisible={showCancelModal}
+                                onKeep={() => setShowCancelModal(false)}
+                                onCancel={onConfirmCancel}
+                            />
                         </View>
                     </>
                 ) : (
