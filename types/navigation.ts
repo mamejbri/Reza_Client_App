@@ -1,6 +1,8 @@
+import { ImageSourcePropType } from 'react-native';
+
 export type RootStackParamList = {
     Home: undefined;
-    Booking: undefined;
+    Booking: { background: ImageSourcePropType };
     Login: undefined;
     Signup: undefined;
     Appointments: undefined;

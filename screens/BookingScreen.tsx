@@ -2,12 +2,18 @@ import React, { useState } from 'react';
 import { View, Text, TextInput, TouchableOpacity, ImageBackground } from 'react-native';
 import IcoMoonIcon from '../src/icons/IcoMoonIcon';
 import { mockSuggestions, getPreviousSearches } from '../services/suggestionService';
+import { useRoute } from '@react-navigation/native';
+import type { RouteProp } from '@react-navigation/native';
+import type { RootStackParamList } from '../types/navigation';
 
-const background = require('../assets/images/background.png');
+type BookingScreenRouteProp = RouteProp<RootStackParamList, 'Booking'>;
 
 const BookingScreen: React.FC = () => {
     const [query, setQuery] = useState<string>('');
     const [showSuggestions, setShowSuggestions] = useState<boolean>(false);
+
+    const route = useRoute<BookingScreenRouteProp>();
+    const { background } = route.params;
 
     const filtered = [
         'Autour de moi',
