@@ -185,15 +185,36 @@ const ReservationDetailScreen = () => {
                                     <Text className="text-lg font-semibold pl-3">À</Text>
                                     <View className="rounded-2xl overflow-hidden bg-gray-100 shadow">
                                         <View className="py-5 px-3 gap-3">
-                                            <View className="flex-row items-center gap-4">
-                                                <View className="bg-danger rounded-2xl py-2 px-3">
+                                            <View className="flex-row items-center gap-4 mb-4">
+                                                <View className="rounded-2xl py-2 px-3 bg-danger">
                                                     <Text className="text-base font-semibold text-white">Midi</Text>
                                                 </View>
                                                 <ScrollView horizontal className="flex-row">
                                                     {['12:00', '12:30', '13:30', '13:40'].map(h => (
-                                                        <TouchableOpacity key={h} onPress={() => { setTime(h); setMoment('Midi'); }}
-                                                            className={`rounded-2xl py-2 px-3 flex-grow flex-row items-center justify-center mr-2 ${time === h ? 'bg-danger' : 'bg-white'}`}>
-                                                            <Text className={`text-base font-semibold ${time === h ? 'text-white' : 'text-black'}`}>{h}</Text>
+                                                        <TouchableOpacity
+                                                            key={h}
+                                                            onPress={() => { setTime(h); setMoment('Midi'); }}
+                                                            className={`rounded-2xl py-2 px-3 flex-grow flex-row items-center justify-center mr-2 ${time === h && moment === 'Midi' ? 'bg-danger' : 'bg-white'}`}
+                                                        >
+                                                            <Text className={`text-base font-semibold ${time === h && moment === 'Midi' ? 'text-white' : 'text-black'}`}>{h}</Text>
+                                                        </TouchableOpacity>
+                                                    ))}
+                                                </ScrollView>
+                                            </View>
+
+                                            {/* Soir Time Slots */}
+                                            <View className="flex-row items-center gap-4">
+                                                <View className="rounded-2xl py-2 px-3 bg-danger">
+                                                    <Text className="text-base font-semibold text-white">Soir</Text>
+                                                </View>
+                                                <ScrollView horizontal className="flex-row">
+                                                    {['19:30', '20:30', '21:30', '22:15'].map(h => (
+                                                        <TouchableOpacity
+                                                            key={h}
+                                                            onPress={() => { setTime(h); setMoment('Soir'); }}
+                                                            className={`rounded-2xl py-2 px-3 flex-grow flex-row items-center justify-center mr-2 ${time === h && moment === 'Soir' ? 'bg-danger' : 'bg-white'}`}
+                                                        >
+                                                            <Text className={`text-base font-semibold ${time === h && moment === 'Soir' ? 'text-white' : 'text-black'}`}>{h}</Text>
                                                         </TouchableOpacity>
                                                     ))}
                                                 </ScrollView>
