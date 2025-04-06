@@ -80,6 +80,9 @@ android/app/build/
 ios/build/
 ios/Pods/
 
+# Environment variables
+.env
+
 # OS
 .DS_Store
 
