@@ -1,97 +1,113 @@
-This is a new [**React Native**](https://reactnative.dev) project, bootstrapped using [`@react-native-community/cli`](https://github.com/react-native-community/cli).
+# 📱 Reza — React Native App
 
-# Getting Started
+This is a mobile app built using **React Native**, bootstrapped with [`@react-native-community/cli`](https://github.com/react-native-community/cli), and connected to a **mock backend** via [`json-server`](https://github.com/typicode/json-server).
 
-> **Note**: Make sure you have completed the [Set Up Your Environment](https://reactnative.dev/docs/set-up-your-environment) guide before proceeding.
+> ⚠️ **Note:** This app currently supports **Android only**. iOS support will be added in a future update.
 
-## Step 1: Start Metro
+## 🚀 Getting Started
 
-First, you will need to run **Metro**, the JavaScript build tool for React Native.
+### 1. Clone the Repo
 
-To start the Metro dev server, run the following command from the root of your React Native project:
-
-```sh
-# Using npm
-npm start
-
-# OR using Yarn
-yarn start
+```bash
+git clone https://github.com/Quartium/RezaVP.git
+cd RezaVP
 ```
 
-## Step 2: Build and run your app
+### 2. Install Dependencies
 
-With Metro running, open a new terminal window/pane from the root of your React Native project, and use one of the following commands to build and run your Android or iOS app:
-
-### Android
-
-```sh
-# Using npm
-npm run android
-
-# OR using Yarn
-yarn android
+```bash
+npm install
 ```
 
-### iOS
+### 3. Create Your Environment File
+Copy the example file:
 
-For iOS, remember to install CocoaPods dependencies (this only needs to be run on first clone or after updating native deps).
-
-The first time you create a new project, run the Ruby bundler to install CocoaPods itself:
-
-```sh
-bundle install
+```bash
+cp .env.example .env
 ```
 
-Then, and every time you update your native dependencies, run:
+Edit the `.env` file and replace the IP with your local IP:
 
-```sh
-bundle exec pod install
+```bash
+API_BASE_URL=http://192.168.1.x:3000
+```
+> **This will be used as your API root in development**
+
+## 📡 Mock Backend with JSON Server
+This app uses [`json-server`](https://github.com/typicode/json-server) to simulate a backend.
+
+```bash
+npx json-server --watch db.json --port 3000
 ```
 
-For more information, please visit [CocoaPods Getting Started guide](https://guides.cocoapods.org/using/getting-started.html).
+This will serve mock API routes like:
 
-```sh
-# Using npm
-npm run ios
+- `GET /users`
 
-# OR using Yarn
-yarn ios
+- `POST /users`
+
+- `GET /users?email=...&password=...`
+
+The server will run at:
+
+```bash
+http://localhost:3000
 ```
 
-If everything is set up correctly, you should see your new app running in the Android Emulator, iOS Simulator, or your connected device.
+If testing on a real device, replace localhost in your .env with your local IP address (e.g., http://192.168.1.17:3000).
 
-This is one way to run your app — you can also build it directly from Android Studio or Xcode.
+## 📱 Running the App
 
-## Step 3: Modify your app
+### 1. Start Metro Bundler
 
-Now that you have successfully run the app, let's make changes!
+```bash
+npx react-native start
+```
 
-Open `App.tsx` in your text editor of choice and make some changes. When you save, your app will automatically update and reflect these changes — this is powered by [Fast Refresh](https://reactnative.dev/docs/fast-refresh).
+### 2. Run on Android
 
-When you want to forcefully reload, for example to reset the state of your app, you can perform a full reload:
+Make sure an Android emulator or device is connected:
 
-- **Android**: Press the <kbd>R</kbd> key twice or select **"Reload"** from the **Dev Menu**, accessed via <kbd>Ctrl</kbd> + <kbd>M</kbd> (Windows/Linux) or <kbd>Cmd ⌘</kbd> + <kbd>M</kbd> (macOS).
-- **iOS**: Press <kbd>R</kbd> in iOS Simulator.
+```bash
+npx react-native run-android
+```
 
-## Congratulations! :tada:
+> **You can also use Android Studio to run the app visually.**
 
-You've successfully run and modified your React Native App. :partying_face:
+## 💡 Dev Tips
 
-### Now what?
+Use `.env` for `API_BASE_URL` and never commit it — use `.env.example` instead
 
-- If you want to add this new React Native code to an existing application, check out the [Integration guide](https://reactnative.dev/docs/integration-with-existing-apps).
-- If you're curious to learn more about React Native, check out the [docs](https://reactnative.dev/docs/getting-started).
+Restart Metro bundler after updating `.env`:
 
-# Troubleshooting
+```bash
+npx react-native start --reset-cache
+```
 
-If you're having issues getting the above steps to work, see the [Troubleshooting](https://reactnative.dev/docs/troubleshooting) page.
+**Android**:
+- Press the <kbd>R</kbd> key twice for Fast Reload.
+- Dev Menu accessed via <kbd>Ctrl</kbd> + <kbd>M</kbd> (Windows/Linux) or <kbd>Cmd ⌘</kbd> + <kbd>M</kbd> (macOS).
 
-# Learn More
+## 🧩 Troubleshooting
 
-To learn more about React Native, take a look at the following resources:
+- Make sure your environment is set up: https://reactnative.dev/docs/environment-setup
 
-- [React Native Website](https://reactnative.dev) - learn more about React Native.
-- [Getting Started](https://reactnative.dev/docs/environment-setup) - an **overview** of React Native and how setup your environment.
-- [Learn the Basics](https://reactnative.dev/docs/getting-started) - a **guided tour** of the React Native **basics**.
-- [Blog](https://reactnative.dev/blog) - read the latest official React Native **Blog** posts.
-- [`@facebook/react-native`](https://github.com/facebook/react-native) - the Open Source; GitHub **repository** for React Native.
+- Ensure `json-server` is running before using the app
+
+- Check that your device can access your local IP
+
+## 📚 Resources
+
+- [React Native Docs](https://reactnative.dev/)
+
+- [React Navigation](https://reactnavigation.org/)
+
+- [JSON Server Docs](https://github.com/typicode/json-server)
+
+- [react-native-dotenv](https://github.com/goatandsheep/react-native-dotenv)
+
+## 👨‍💻 Author & License
+
+Made with ❤️ by [Quartium](https://github.com/Quartium)
+
+Licensed under the MIT License
