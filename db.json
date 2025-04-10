@@ -2,15 +2,159 @@
   "users": [
     {
       "id": "1",
-      "email": "test@used.com",
+      "email": "test@gmail.com",
       "phone": "12345678",
-      "password": "secret"
+      "password": "0000",
+      "reservations": [
+        {
+          "id": "res_001",
+          "place_id": "place_001",
+          "date": "2025-04-15",
+          "time": "20:00",
+          "people": 2,
+          "status": "confirmed"
+        }
+      ]
+    }
+  ],
+  "categories": [
+    {
+      "id": "cat_001",
+      "name": "Restaurant",
+      "places": [
+        "place_001"
+      ]
     },
     {
-      "id": "9d38",
-      "phone": "55126800",
-      "email": "test@gmail.com",
-      "password": "0000"
+      "id": "cat_002",
+      "name": "Soins et Beauté",
+      "places": [
+        "place_002"
+      ]
+    },
+    {
+      "id": "cat_003",
+      "name": "Activité",
+      "places": [
+        "place_003"
+      ]
+    }
+  ],
+  "places": [
+    {
+      "id": "place_001",
+      "category_id": "cat_001",
+      "name": "La Table Gourmande",
+      "address": "123 Rue de Paris, 75001 Marrakech",
+      "city": "Marrakech",
+      "location": {
+        "lat": 31.6258,
+        "lng": -7.9892
+      },
+      "rating": 4.6,
+      "description": "Authentic French cuisine in the heart of Paris.",
+      "images": [
+        "https://cdn.pixabay.com/photo/2014/08/06/19/24/retaurant-411940_640.jpg",
+        "https://oaformation.com/wp-content/uploads/2019/10/Besoins-clients-en-restauration.jpg"
+      ],
+      "menu": [
+        "https://example.com/images/menu1.jpg",
+        "https://example.com/images/menu2.jpg"
+      ],
+      "reviews": [
+        {
+          "user_id": "1",
+          "rating": 5,
+          "comment": "Amazing service and delicious food!",
+          "date": "2025-04-01"
+        }
+      ],
+      "available_slots": {
+        "2025-04-15": [
+          {
+            "time": "19:00",
+            "reserved_by": null
+          },
+          {
+            "time": "20:00",
+            "reserved_by": "1"
+          }
+        ],
+        "2025-04-16": [
+          {
+            "time": "19:00",
+            "reserved_by": null
+          },
+          {
+            "time": "20:00",
+            "reserved_by": null
+          }
+        ]
+      }
+    },
+    {
+      "id": "place_002",
+      "category_id": "cat_002",
+      "name": "Beauté Élégante",
+      "address": "25 Rue Lafayette, 75009 Marrakech",
+      "city": "Marrakech",
+      "location": {
+        "lat": 31.6258,
+        "lng": -7.9892
+      },
+      "rating": 4.8,
+      "description": "Luxury beauty salon with premium skincare and hairstyling services.",
+      "images": [
+        "https://example.com/images/salon1.jpg"
+      ],
+      "menu": [
+        "https://example.com/images/salon_menu.jpg"
+      ],
+      "reviews": [],
+      "available_slots": {
+        "2025-04-15": [
+          {
+            "time": "10:00",
+            "reserved_by": null
+          },
+          {
+            "time": "11:00",
+            "reserved_by": null
+          }
+        ]
+      }
+    },
+    {
+      "id": "place_003",
+      "category_id": "cat_003",
+      "name": "Yoga Zen Experience",
+      "address": "12 Rue des Martyrs, 75018 Marrakech",
+      "city": "Marrakech",
+      "location": {
+        "lat": 31.6258,
+        "lng": -7.9892
+      },
+      "rating": 4.5,
+      "description": "Join our group yoga sessions for peace of mind and body balance.",
+      "images": [
+        "https://example.com/images/yoga1.jpg"
+      ],
+      "menu": [
+        "https://example.com/images/yoga_schedule.jpg"
+      ],
+      "reviews": [],
+      "available_slots": {
+        "2025-04-17": [
+          {
+            "time": "09:00",
+            "reserved_by": null
+          },
+          {
+            "time": "10:00",
+            "reserved_by": null
+          }
+        ]
+      }
     }
   ]
 }
