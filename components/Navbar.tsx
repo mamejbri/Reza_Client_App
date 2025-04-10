@@ -42,23 +42,32 @@ const Navbar: React.FC<{ transparent?: boolean }> = ({ transparent }) => {
                         <IcoMoonIcon name="return" size={50} color={transparent ? "#fff" : "#000"} />
                     </TouchableOpacity>
                 ) : (
-                    <Image
-                        source={transparent ? logoLight : logo}
-                        style={{ width: 100, height: 54, resizeMode: 'contain' }}
-                    />
+                    <TouchableOpacity onPress={() => navigation.navigate('Home')}>
+                        <Image
+                            source={transparent ? logoLight : logo}
+                            style={{ width: 100, height: 54, resizeMode: 'contain' }}
+                        />
+                    </TouchableOpacity>
                 )}
 
                 {/* Center: Logo if back button exists */}
                 {canGoBack && (
-                    <Image
-                        source={transparent ? logoLight : logo}
-                        style={{ width: 100, height: 54, resizeMode: 'contain' }}
-                    />
+                    <TouchableOpacity onPress={() => navigation.navigate('Home')}>
+                        <Image
+                            source={transparent ? logoLight : logo}
+                            style={{ width: 100, height: 54, resizeMode: 'contain' }}
+                        />
+                    </TouchableOpacity>
                 )}
 
                 {/* Right: Profile/Login button */}
                 <TouchableOpacity
-                    onPress={() => navigation.navigate(isLoggedIn ? 'Profile' : 'Login')}
+                    onPress={() => navigation.navigate(isLoggedIn ? 'Appointments' : 'Login')}
+                    onLongPress={() => {
+                        if (isLoggedIn) {
+                            navigation.navigate('Profile');
+                        }
+                    }}
                     className="btn-icon" >
                     <IcoMoonIcon name="profile" size={30} color="#fff" />
                 </TouchableOpacity>
