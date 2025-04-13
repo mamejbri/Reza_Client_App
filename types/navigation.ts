@@ -2,10 +2,11 @@ import { ImageSourcePropType } from 'react-native';
 
 export type RootStackParamList = {
   Home: undefined;
-  Booking: { background: ImageSourcePropType };
+  Booking: { background: ImageSourcePropType, category: string };
   Login: undefined;
   Signup: undefined;
   Profile: undefined;
   Appointments: undefined;
   ReservationDetail: { reservation: any };
+  SearchResults: { city: string; category: string; coords: { lat: number; lng: number } | null; };
 };

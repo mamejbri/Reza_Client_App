@@ -168,3 +168,64 @@ export const cancelReservation = async (
         return false;
     }
 };
+
+export const addReservation = async (
+    placeId: string,
+    date: string,
+    time: string,
+    people: number
+): Promise<boolean> => {
+    try {
+        const user = await getCurrentUser();
+        if (!user) return false;
+
+        // Generate a unique reservation ID
+        const reservationId = `res_${Date.now()}`;
+
+        // Fetch current user data
+        const userRes = await fetch(`${API_BASE_URL}/users/${user.id}`);
+        const userData = await userRes.json();
+
+        const newReservation: Reservation = {
+            id: reservationId,
+            place_id: placeId,
+            date,
+            time,
+            people,
+            status: 'confirmed',
+        };
+
+        const updatedReservations = [...(userData.reservations || []), newReservation];
+
+        // Update user reservations
+        await fetch(`${API_BASE_URL}/users/${user.id}`, {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ reservations: updatedReservations }),
+        });
+
+        // Fetch and update place slots
+        const placeRes = await fetch(`${API_BASE_URL}/places/${placeId}`);
+        const place = await placeRes.json();
+        const updatedSlots = { ...place.available_slots };
+
+        if (updatedSlots[date]) {
+            updatedSlots[date] = updatedSlots[date].map((s: any) =>
+                s.time === time && s.reserved_by === null
+                    ? { ...s, reserved_by: user.id }
+                    : s
+            );
+        }
+
+        await fetch(`${API_BASE_URL}/places/${placeId}`, {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ available_slots: updatedSlots }),
+        });
+
+        return true;
+    } catch (err) {
+        console.error('addReservation error:', err);
+        return false;
+    }
+};

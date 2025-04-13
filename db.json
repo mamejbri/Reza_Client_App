@@ -9,12 +9,19 @@
         {
           "id": "res_001",
           "place_id": "place_001",
-          "date": "2025-04-16",
-          "time": "20:00",
+          "date": "2025-04-20",
+          "time": "13:00",
           "people": 5,
           "status": "confirmed"
         }
       ]
+    },
+    {
+      "id": "24ed",
+      "phone": "55123456",
+      "email": "dali@gmail.com",
+      "password": "0000",
+      "reservations": []
     }
   ],
   "categories": [
@@ -71,25 +78,157 @@
       "available_slots": {
         "2025-04-15": [
           {
-            "time": "17:00",
+            "time": "12:00",
             "reserved_by": null
           },
           {
-            "time": "19:00",
+            "time": "13:00",
             "reserved_by": null
           },
           {
-            "time": "20:00",
+            "time": "14:00",
+            "reserved_by": null
+          },
+          {
+            "time": "18:00",
+            "reserved_by": null
+          },
+          {
+            "time": "19:30",
+            "reserved_by": null
+          },
+          {
+            "time": "21:00",
             "reserved_by": null
           }
         ],
         "2025-04-16": [
           {
-            "time": "19:00",
+            "time": "12:00",
             "reserved_by": null
           },
           {
-            "time": "20:00",
+            "time": "13:00",
+            "reserved_by": null
+          },
+          {
+            "time": "14:00",
+            "reserved_by": null
+          },
+          {
+            "time": "18:00",
+            "reserved_by": null
+          },
+          {
+            "time": "19:30",
+            "reserved_by": null
+          },
+          {
+            "time": "21:00",
+            "reserved_by": null
+          }
+        ],
+        "2025-04-17": [
+          {
+            "time": "12:00",
+            "reserved_by": null
+          },
+          {
+            "time": "13:00",
+            "reserved_by": null
+          },
+          {
+            "time": "14:00",
+            "reserved_by": null
+          },
+          {
+            "time": "18:00",
+            "reserved_by": null
+          },
+          {
+            "time": "19:30",
+            "reserved_by": null
+          },
+          {
+            "time": "21:00",
+            "reserved_by": null
+          }
+        ],
+        "2025-04-18": [
+          {
+            "time": "12:00",
+            "reserved_by": null
+          },
+          {
+            "time": "13:00",
+            "reserved_by": null
+          },
+          {
+            "time": "14:00",
+            "reserved_by": null
+          },
+          {
+            "time": "18:00",
+            "reserved_by": null
+          },
+          {
+            "time": "19:30",
+            "reserved_by": null
+          },
+          {
+            "time": "21:00",
+            "reserved_by": null
+          }
+        ],
+        "2025-04-19": [
+          {
+            "time": "12:00",
+            "reserved_by": null
+          },
+          {
+            "time": "13:00",
+            "reserved_by": null
+          },
+          {
+            "time": "14:00",
+            "reserved_by": null
+          },
+          {
+            "time": "18:00",
+            "reserved_by": null
+          },
+          {
+            "time": "19:30",
+            "reserved_by": null
+          },
+          {
+            "time": "21:00",
+            "reserved_by": null
+          }
+        ],
+        "2025-04-20": [
+          {
+            "time": "12:00",
+            "reserved_by": null
+          },
+          {
+            "time": "13:00",
+            "reserved_by": "1"
+          },
+          {
+            "time": "14:00",
+            "reserved_by": null
+          },
+          {
+            "time": "18:00",
+            "reserved_by": null
+          },
+          {
+            "time": "19:30",
+            "reserved_by": null
+          },
+          {
+            "time": "21:00",
             "reserved_by": "1"
           }
         ]
@@ -154,6 +293,364 @@
           },
           {
             "time": "10:00",
+            "reserved_by": null
+          }
+        ]
+      }
+    },
+    {
+      "id": "place_004",
+      "category_id": "cat_001",
+      "name": "Le Riad Gourmet",
+      "address": "45 Rue Sidi Abdelaziz, 40000 Marrakech",
+      "city": "Marrakech",
+      "location": {
+        "lat": 31.63,
+        "lng": -7.9898
+      },
+      "rating": 4.7,
+      "description": "Elegant Moroccan dining in a traditional riad setting.",
+      "images": [
+        "https://cdn.pixabay.com/photo/2014/08/06/19/24/retaurant-411940_640.jpg",
+        "https://oaformation.com/wp-content/uploads/2019/10/Besoins-clients-en-restauration.jpg"
+      ],
+      "menu": [
+        "https://example.com/images/menu_riad.jpg"
+      ],
+      "reviews": [],
+      "available_slots": {
+        "2025-04-15": [
+          {
+            "time": "12:00",
+            "reserved_by": null
+          },
+          {
+            "time": "13:00",
+            "reserved_by": null
+          },
+          {
+            "time": "14:00",
+            "reserved_by": null
+          },
+          {
+            "time": "18:00",
+            "reserved_by": null
+          },
+          {
+            "time": "19:30",
+            "reserved_by": null
+          },
+          {
+            "time": "21:00",
+            "reserved_by": null
+          }
+        ],
+        "2025-04-16": [
+          {
+            "time": "12:00",
+            "reserved_by": null
+          },
+          {
+            "time": "13:00",
+            "reserved_by": null
+          },
+          {
+            "time": "14:00",
+            "reserved_by": null
+          },
+          {
+            "time": "18:00",
+            "reserved_by": null
+          },
+          {
+            "time": "19:30",
+            "reserved_by": null
+          },
+          {
+            "time": "21:00",
+            "reserved_by": null
+          }
+        ],
+        "2025-04-17": [
+          {
+            "time": "12:00",
+            "reserved_by": null
+          },
+          {
+            "time": "13:00",
+            "reserved_by": null
+          },
+          {
+            "time": "14:00",
+            "reserved_by": null
+          },
+          {
+            "time": "18:00",
+            "reserved_by": null
+          },
+          {
+            "time": "19:30",
+            "reserved_by": null
+          },
+          {
+            "time": "21:00",
+            "reserved_by": null
+          }
+        ],
+        "2025-04-18": [
+          {
+            "time": "12:00",
+            "reserved_by": null
+          },
+          {
+            "time": "13:00",
+            "reserved_by": null
+          },
+          {
+            "time": "14:00",
+            "reserved_by": null
+          },
+          {
+            "time": "18:00",
+            "reserved_by": null
+          },
+          {
+            "time": "19:30",
+            "reserved_by": null
+          },
+          {
+            "time": "21:00",
+            "reserved_by": null
+          }
+        ],
+        "2025-04-19": [
+          {
+            "time": "12:00",
+            "reserved_by": null
+          },
+          {
+            "time": "13:00",
+            "reserved_by": null
+          },
+          {
+            "time": "14:00",
+            "reserved_by": null
+          },
+          {
+            "time": "18:00",
+            "reserved_by": null
+          },
+          {
+            "time": "19:30",
+            "reserved_by": null
+          },
+          {
+            "time": "21:00",
+            "reserved_by": null
+          }
+        ],
+        "2025-04-20": [
+          {
+            "time": "12:00",
+            "reserved_by": null
+          },
+          {
+            "time": "13:00",
+            "reserved_by": null
+          },
+          {
+            "time": "14:00",
+            "reserved_by": null
+          },
+          {
+            "time": "18:00",
+            "reserved_by": null
+          },
+          {
+            "time": "19:30",
+            "reserved_by": null
+          },
+          {
+            "time": "21:00",
+            "reserved_by": null
+          }
+        ]
+      }
+    },
+    {
+      "id": "place_005",
+      "category_id": "cat_001",
+      "name": "Beldi Bistro",
+      "address": "22 Derb El Ferrane, Medina, Marrakech",
+      "city": "Marrakech",
+      "location": {
+        "lat": 31.6285,
+        "lng": -7.9833
+      },
+      "rating": 4.3,
+      "description": "Cozy garden café serving fusion Moroccan-European dishes.",
+      "images": [
+        "https://cdn.pixabay.com/photo/2014/08/06/19/24/retaurant-411940_640.jpg",
+        "https://oaformation.com/wp-content/uploads/2019/10/Besoins-clients-en-restauration.jpg"
+      ],
+      "menu": [
+        "https://example.com/images/menu_beldi.jpg"
+      ],
+      "reviews": [],
+      "available_slots": {
+        "2025-04-15": [
+          {
+            "time": "12:00",
+            "reserved_by": null
+          },
+          {
+            "time": "13:00",
+            "reserved_by": null
+          },
+          {
+            "time": "14:00",
+            "reserved_by": null
+          },
+          {
+            "time": "18:00",
+            "reserved_by": null
+          },
+          {
+            "time": "19:30",
+            "reserved_by": null
+          },
+          {
+            "time": "21:00",
+            "reserved_by": null
+          }
+        ],
+        "2025-04-16": [
+          {
+            "time": "12:00",
+            "reserved_by": null
+          },
+          {
+            "time": "13:00",
+            "reserved_by": null
+          },
+          {
+            "time": "14:00",
+            "reserved_by": null
+          },
+          {
+            "time": "18:00",
+            "reserved_by": null
+          },
+          {
+            "time": "19:30",
+            "reserved_by": null
+          },
+          {
+            "time": "21:00",
+            "reserved_by": null
+          }
+        ],
+        "2025-04-17": [
+          {
+            "time": "12:00",
+            "reserved_by": null
+          },
+          {
+            "time": "13:00",
+            "reserved_by": null
+          },
+          {
+            "time": "14:00",
+            "reserved_by": null
+          },
+          {
+            "time": "18:00",
+            "reserved_by": null
+          },
+          {
+            "time": "19:30",
+            "reserved_by": null
+          },
+          {
+            "time": "21:00",
+            "reserved_by": null
+          }
+        ],
+        "2025-04-18": [
+          {
+            "time": "12:00",
+            "reserved_by": null
+          },
+          {
+            "time": "13:00",
+            "reserved_by": null
+          },
+          {
+            "time": "14:00",
+            "reserved_by": null
+          },
+          {
+            "time": "18:00",
+            "reserved_by": null
+          },
+          {
+            "time": "19:30",
+            "reserved_by": null
+          },
+          {
+            "time": "21:00",
+            "reserved_by": null
+          }
+        ],
+        "2025-04-19": [
+          {
+            "time": "12:00",
+            "reserved_by": null
+          },
+          {
+            "time": "13:00",
+            "reserved_by": null
+          },
+          {
+            "time": "14:00",
+            "reserved_by": null
+          },
+          {
+            "time": "18:00",
+            "reserved_by": null
+          },
+          {
+            "time": "19:30",
+            "reserved_by": null
+          },
+          {
+            "time": "21:00",
+            "reserved_by": null
+          }
+        ],
+        "2025-04-20": [
+          {
+            "time": "12:00",
+            "reserved_by": null
+          },
+          {
+            "time": "13:00",
+            "reserved_by": null
+          },
+          {
+            "time": "14:00",
+            "reserved_by": null
+          },
+          {
+            "time": "18:00",
+            "reserved_by": null
+          },
+          {
+            "time": "19:30",
+            "reserved_by": null
+          },
+          {
+            "time": "21:00",
             "reserved_by": null
           }
         ]

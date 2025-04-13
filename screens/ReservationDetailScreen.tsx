@@ -10,16 +10,16 @@ import ReviewSection from '../components/ReviewSection';
 import AboutSection from '../components/AboutSection';
 import IcoMoonIcon from '../src/icons/IcoMoonIcon';
 import { isoToFrDisplay } from '../utils/date';
-import { updateReservation, cancelReservation } from '../services/reservations';
+import { updateReservation, cancelReservation, addReservation } from '../services/reservations';
 
 type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
 
 const ReservationDetailScreen = () => {
     const navigation = useNavigation<NavigationProp>();
     const route = useRoute();
-    const { reservation } = route.params;
+    const { reservation, startInEditMode } = route.params;
 
-    const [tab, setTab] = useState('view');
+    const [tab, setTab] = useState(startInEditMode ? 'edit' : 'view');
     const [activeEditTab, setActiveEditTab] = useState('rendezvous');
     const [people, setPeople] = useState(reservation.people);
     const [dateISO, setDateISO] = useState(reservation.date);
@@ -138,15 +138,29 @@ const ReservationDetailScreen = () => {
                                 initialTime={time}
                                 availableSlots={reservation.place.available_slots}
                                 onConfirm={async (p, dISO, t) => {
-                                    const success = await updateReservation(
-                                        reservation.id,
-                                        reservation.place.id,
-                                        dateISO,
-                                        time,
-                                        dISO,
-                                        t,
-                                        p
-                                    );
+                                    let success = false;
+
+                                    if (reservation.id === 'new') {
+                                        // New reservation
+                                        success = await addReservation(
+                                            reservation.place.id,
+                                            dISO,
+                                            t,
+                                            p
+                                        );
+                                    } else {
+                                        // Update existing
+                                        success = await updateReservation(
+                                            reservation.id,
+                                            reservation.place.id,
+                                            dateISO,
+                                            time,
+                                            dISO,
+                                            t,
+                                            p
+                                        );
+                                    }
+
                                     if (success) {
                                         setPeople(p);
                                         setDateISO(dISO);
@@ -154,6 +168,7 @@ const ReservationDetailScreen = () => {
                                         setTab('view');
                                     } else {
                                         // Optionally show error
+                                        console.warn('Failed to save reservation');
                                     }
                                 }}
                             />

@@ -7,6 +7,7 @@ import SignupScreen from '../screens/SignupScreen';
 import ProfileScreen from '../screens/ProfileScreen';
 import AppointmentsScreen from '../screens/AppointmentsScreen';
 import ReservationDetailScreen from '../screens/ReservationDetailScreen';
+import SearchResultsScreen from '../screens/SearchResultsScreen';
 import Navbar from '../components/Navbar';
 import type { RootStackParamList } from '../types/navigation';
 
@@ -21,6 +22,7 @@ const AppNavigator = () => (
     <Stack.Screen name="Profile" component={ProfileScreen} options={{ header: () => <Navbar /> }} />
     <Stack.Screen name="Appointments" component={AppointmentsScreen} options={{ header: () => <Navbar /> }} />
     <Stack.Screen name="ReservationDetail" component={ReservationDetailScreen} options={{ header: () => <Navbar /> }} />
+    <Stack.Screen name="SearchResults" component={SearchResultsScreen} options={{ header: () => <Navbar /> }} />
   </Stack.Navigator>
 );
 

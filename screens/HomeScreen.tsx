@@ -40,7 +40,7 @@ const HomeScreen: React.FC = () => {
                 <TouchableOpacity
                     key={item.id}
                     className="rounded-xl h-48 mb-4 overflow-hidden"
-                    onPress={() => navigation.navigate('Booking', { background: item.image })}>
+                    onPress={() => navigation.navigate('Booking', { background: item.image, category: item.name })}>
                     <ImageBackground
                         source={item.image}
                         resizeMode="cover"
