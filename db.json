@@ -58,8 +58,7 @@
         "https://oaformation.com/wp-content/uploads/2019/10/Besoins-clients-en-restauration.jpg"
       ],
       "menu": [
-        "https://example.com/images/menu1.jpg",
-        "https://example.com/images/menu2.jpg"
+        "https://marketplace.canva.com/EAFwRADHMsM/1/0/1035w/canva-orange-and-black-bold-geometric-restaurant-menu-AX4bhelWqNA.jpg"
       ],
       "reviews": [
         {
@@ -71,6 +70,10 @@
       ],
       "available_slots": {
         "2025-04-15": [
+          {
+            "time": "17:00",
+            "reserved_by": null
+          },
           {
             "time": "19:00",
             "reserved_by": null
@@ -108,7 +111,7 @@
         "https://example.com/images/salon1.jpg"
       ],
       "menu": [
-        "https://example.com/images/salon_menu.jpg"
+        "https://marketplace.canva.com/EAFwRADHMsM/1/0/1035w/canva-orange-and-black-bold-geometric-restaurant-menu-AX4bhelWqNA.jpg"
       ],
       "reviews": [],
       "available_slots": {
@@ -140,7 +143,7 @@
         "https://example.com/images/yoga1.jpg"
       ],
       "menu": [
-        "https://example.com/images/yoga_schedule.jpg"
+        "https://marketplace.canva.com/EAFwRADHMsM/1/0/1035w/canva-orange-and-black-bold-geometric-restaurant-menu-AX4bhelWqNA.jpg"
       ],
       "reviews": [],
       "available_slots": {

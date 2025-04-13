@@ -45,9 +45,10 @@ const CustomCalendarModal: React.FC<Props> = ({
                     enableSwipeMonths
                     hideExtraDays={true}
                     monthFormat="MMMM yyyy"
-                    dayComponent={({ date, state }) => {
+                    dayComponent={({ date }) => {
                         const dayStr = date.dateString;
-                        const isDisabled = disabledDates.includes(dayStr);
+                        const isDisabled =
+                            disabledDates.includes(dayStr) || new Date(dayStr) < new Date(todayStr);
                         const isToday = dayStr === todayStr;
                         const isSelected = dayStr === selectedDate;
 
@@ -67,15 +68,7 @@ const CustomCalendarModal: React.FC<Props> = ({
 
                         const handlePress = () => {
                             if (isDisabled) return;
-                            const dateObj = new Date(dayStr);
-                            const formatted = dateObj.toLocaleDateString('fr-FR', {
-                                weekday: 'long',
-                                day: 'numeric',
-                                month: 'short',
-                                year: 'numeric',
-                            });
-                            const capitalized = formatted.charAt(0).toUpperCase() + formatted.slice(1);
-                            onSelectDate(capitalized);
+                            onSelectDate(dayStr);
                             onClose();
                         };
 
@@ -92,9 +85,10 @@ const CustomCalendarModal: React.FC<Props> = ({
                                     justifyContent: 'center',
                                     marginHorizontal: 6,
                                     marginVertical: 6,
-                                }}
-                            >
-                                <Text style={{ color: textColor, fontSize: 16, fontWeight: '400' }}>{date.day}</Text>
+                                }} >
+                                <Text style={{ color: textColor, fontSize: 16, fontWeight: '400' }}>
+                                    {date.day}
+                                </Text>
                             </TouchableOpacity>
                         );
                     }}

@@ -1,11 +1,15 @@
 import React, { useState } from 'react';
-import { View, Text, ScrollView, TouchableOpacity, Image, TextInput } from 'react-native';
+import { View, Text, ScrollView, TouchableOpacity, Image } from 'react-native';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import type { RootStackParamList } from '../types/navigation';
-import CustomCalendarModal from '../components/CustomCalendarModal';
 import CancelReservationModal from '../components/CancelReservationModal';
+import ReservationSummary from '../components/ReservationSummary';
+import EditReservationForm from '../components/EditReservationForm';
+import ReviewSection from '../components/ReviewSection';
+import AboutSection from '../components/AboutSection';
 import IcoMoonIcon from '../src/icons/IcoMoonIcon';
+import { isoToFrDisplay } from '../utils/date';
 
 type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
 
@@ -13,19 +17,15 @@ const ReservationDetailScreen = () => {
     const navigation = useNavigation<NavigationProp>();
     const route = useRoute();
     const { reservation } = route.params;
-    const [tab, setTab] = useState('view'); // 'view' or 'edit'
-    const [activeEditTab, setActiveEditTab] = useState('rendezvous');
 
-    const [people, setPeople] = useState(2);
-    const [date, setDate] = useState('Lundi. 7 fev 2025');
-    const [time, setTime] = useState('13:30');
-    const [moment, setMoment] = useState('Midi');
-    const [showCalendar, setShowCalendar] = useState(false);
+    const [tab, setTab] = useState('view');
+    const [activeEditTab, setActiveEditTab] = useState('rendezvous');
+    const [people, setPeople] = useState(reservation.people);
+    const [dateISO, setDateISO] = useState(reservation.date);
+    const [time, setTime] = useState(reservation.time);
     const [showCancelModal, setShowCancelModal] = useState(false);
 
-    const [userRating, setUserRating] = useState(4);
-    const [editingComment, setEditingComment] = useState(false);
-    const [userComment, setUserComment] = useState('');
+    const moment = Number(time.split(':')[0]) < 18 ? 'Midi' : 'Soir';
 
     const handleCancel = () => {
         setShowCancelModal(true);
@@ -40,19 +40,19 @@ const ReservationDetailScreen = () => {
         <ScrollView className="bg-white flex-1 px-4">
             {/* Header */}
             <View className="rounded-2xl overflow-hidden bg-gray-100 shadow mt-5">
-                <Image source={reservation.image} className="w-full h-[200]" resizeMode="cover" />
+                <Image source={{ uri: reservation.place.images[0] }} className="w-full h-[200]" resizeMode="cover" />
                 <View className="py-4 px-2.5 gap-3">
-                    <Text className="text-lg font-bold">{reservation.name}</Text>
+                    <Text className="text-lg font-bold">{reservation.place.name}</Text>
                     <View className="flex-row items-center gap-2">
                         <IcoMoonIcon name="location" size={24} color="#C53334" />
                         <Text className="text-base font-medium">
-                            {reservation.address}
+                            {reservation.place.address}
                         </Text>
                     </View>
                     <View className="flex-row items-center gap-2">
                         <IcoMoonIcon name="location" size={24} color="#C53334" />
                         <Text className="text-base font-medium">
-                            4.6 (2 766 avis) $$$
+                            {reservation.place.rating} ({reservation.place.reviews.length} avis) $$$
                         </Text>
                     </View>
                 </View>
@@ -77,44 +77,12 @@ const ReservationDetailScreen = () => {
                             </TouchableOpacity>
                         </ScrollView>
 
-                        <View className="flex-column mb-3">
-                            <Text className="text-lg font-semibold pl-3">J'ai réservé pour</Text>
-                            <View className="rounded-2xl overflow-hidden bg-gray-100 shadow">
-                                <View className="py-5 px-3 gap-3">
-                                    <View className="flex-row items-center gap-2">
-                                        <Text className="text-base font-bold flex-grow">Nombre de personnes :</Text>
-                                        <View className="bg-white w-[40] h-[40] p-2 flex-row align-center justify-center">
-                                            <Text className="text-xl font-bold">{people}</Text>
-                                        </View>
-                                    </View>
-                                </View>
-                            </View>
-                        </View>
-                        <View className="flex-column mb-3">
-                            <Text className="text-lg font-semibold pl-3">Pour le</Text>
-                            <View className="rounded-2xl overflow-hidden bg-gray-100 shadow">
-                                <View className="py-5 px-3 gap-3">
-                                    <View className="flex-row items-center justify-center gap-2">
-                                        <Text className="text-base font-bold">{date}</Text>
-                                    </View>
-                                </View>
-                            </View>
-                        </View>
-                        <View className="flex-column">
-                            <Text className="text-lg font-semibold pl-3">À</Text>
-                            <View className="rounded-2xl overflow-hidden bg-gray-100 shadow">
-                                <View className="py-5 px-3 gap-3">
-                                    <View className="flex-row items-center gap-4">
-                                        <View className="bg-danger rounded-2xl py-2 px-3">
-                                            <Text className="text-base font-semibold text-white">{moment}</Text>
-                                        </View>
-                                        <View className="bg-white rounded-2xl py-2 px-3 flex-grow flex-row items-center justify-center">
-                                            <Text className="text-base font-semibold">{time}</Text>
-                                        </View>
-                                    </View>
-                                </View>
-                            </View>
-                        </View>
+                        <ReservationSummary
+                            people={people}
+                            date={isoToFrDisplay(dateISO)}
+                            time={time}
+                            moment={moment}
+                        />
 
                         <View className="flex-column mt-6 gap-3 mb-4">
                             <TouchableOpacity onPress={() => setTab('edit')} className="btn-primary">
@@ -151,224 +119,43 @@ const ReservationDetailScreen = () => {
 
                         {/* Rendez-vous Tab */}
                         {activeEditTab === 'rendezvous' && (
-                            <View>
-                                <View className="flex-column mb-3">
-                                    <Text className="text-lg font-semibold pl-3">Je réserve ma place</Text>
-                                    <View className="rounded-2xl overflow-hidden bg-gray-100 shadow">
-                                        <View className="py-5 px-3 gap-3">
-                                            <View className="flex-row items-center gap-2">
-                                                <Text className="text-base font-bold flex-grow">Nombre de personnes :</Text>
-                                                <View className="flex-row items-center gap-2">
-                                                    <TouchableOpacity className="btn-smallest-icon" onPress={() => setPeople(p => Math.max(1, p - 1))}>
-                                                        <Text className="text-white text-xl">-</Text>
-                                                    </TouchableOpacity>
-                                                    <View className="bg-white w-[40] h-[40] p-2 flex-row align-center justify-center">
-                                                        <Text className="text-xl font-bold">{people}</Text>
-                                                    </View>
-                                                    <TouchableOpacity className="btn-smallest-icon" onPress={() => setPeople(p => p + 1)}>
-                                                        <Text className="text-white text-xl">+</Text>
-                                                    </TouchableOpacity>
-                                                </View>
-                                            </View>
-                                        </View>
-                                    </View>
-                                </View>
-
-                                <View className="flex-column mb-3">
-                                    <Text className="text-lg font-semibold pl-3">Pour le</Text>
-                                    <View className="rounded-2xl overflow-hidden bg-gray-100 shadow">
-                                        <View className="py-5 px-3 gap-3">
-                                            <View className="flex-row items-center justify-center gap-2">
-                                                <TouchableOpacity onPress={() => setShowCalendar(true)}>
-                                                    <Text className="text-base font-bold">{date}</Text>
-                                                </TouchableOpacity>
-                                            </View>
-                                        </View>
-                                    </View>
-                                </View>
-
-                                <View className="flex-column">
-                                    <Text className="text-lg font-semibold pl-3">À</Text>
-                                    <View className="rounded-2xl overflow-hidden bg-gray-100 shadow">
-                                        <View className="py-5 px-3 gap-3">
-                                            <View className="flex-row items-center gap-4 mb-4">
-                                                <View className="rounded-2xl py-2 px-3 bg-danger">
-                                                    <Text className="text-base font-semibold text-white">Midi</Text>
-                                                </View>
-                                                <ScrollView horizontal className="flex-row">
-                                                    {['12:00', '12:30', '13:30', '13:40'].map(h => (
-                                                        <TouchableOpacity
-                                                            key={h}
-                                                            onPress={() => { setTime(h); setMoment('Midi'); }}
-                                                            className={`rounded-2xl py-2 px-3 flex-grow flex-row items-center justify-center mr-2 ${time === h && moment === 'Midi' ? 'bg-danger' : 'bg-white'}`}
-                                                        >
-                                                            <Text className={`text-base font-semibold ${time === h && moment === 'Midi' ? 'text-white' : 'text-black'}`}>{h}</Text>
-                                                        </TouchableOpacity>
-                                                    ))}
-                                                </ScrollView>
-                                            </View>
-
-                                            {/* Soir Time Slots */}
-                                            <View className="flex-row items-center gap-4">
-                                                <View className="rounded-2xl py-2 px-3 bg-danger">
-                                                    <Text className="text-base font-semibold text-white">Soir</Text>
-                                                </View>
-                                                <ScrollView horizontal className="flex-row">
-                                                    {['19:30', '20:30', '21:30', '22:15'].map(h => (
-                                                        <TouchableOpacity
-                                                            key={h}
-                                                            onPress={() => { setTime(h); setMoment('Soir'); }}
-                                                            className={`rounded-2xl py-2 px-3 flex-grow flex-row items-center justify-center mr-2 ${time === h && moment === 'Soir' ? 'bg-danger' : 'bg-white'}`}
-                                                        >
-                                                            <Text className={`text-base font-semibold ${time === h && moment === 'Soir' ? 'text-white' : 'text-black'}`}>{h}</Text>
-                                                        </TouchableOpacity>
-                                                    ))}
-                                                </ScrollView>
-                                            </View>
-                                        </View>
-                                    </View>
-                                </View>
-
-                                <TouchableOpacity onPress={() => setTab('view')} className="btn-primary mt-6">
-                                    <Text className="btn-primary-text">Je confirme ma REZA</Text>
-                                </TouchableOpacity>
-                            </View>
+                            <EditReservationForm
+                                key={`${people}-${dateISO}-${time}`}
+                                initialPeople={people}
+                                initialDateISO={dateISO}
+                                initialTime={time}
+                                availableSlots={reservation.place.available_slots}
+                                onConfirm={(p, dISO, t) => {
+                                    setPeople(p);
+                                    setDateISO(dISO);
+                                    setTime(t);
+                                    setTab('view');
+                                }}
+                            />
                         )}
-
                         {/* Menu Tab */}
                         {activeEditTab === 'menu' && (
                             <View>
-                                <Image source={require('../assets/images/menu.png')} className="w-full rounded-xl" />
+                                {reservation.place.menu.map((img: string) => (
+                                    <Image key={img} source={{ uri: img }} className="w-full h-[500] rounded-xl mb-3" resizeMode="cover" />
+                                ))}
                             </View>
                         )}
 
                         {/* Avis Tab */}
                         {activeEditTab === 'avis' && (
-                            <View className="mt-2 mb-6">
-                                {/* User Review Section */}
-                                <View className="bg-gray-100 rounded-2xl p-2.5 mb-9">
-                                    <View className="py-4">
-                                        <View className="flex-row items-center mb-4">
-                                            <Image source={require('../assets/images/avatar.png')} className="w-[54] h-[54] rounded-full" />
-                                            <View className="flex-1 ml-5">
-                                                <Text className="font-medium text-base mb-2">Alicia</Text>
-                                                <View className="flex-row gap-1">
-                                                    {[1, 2, 3, 4].map(i => (
-                                                        <TouchableOpacity key={i} onPress={() => setUserRating(i)}>
-                                                            <IcoMoonIcon
-                                                                name="star-solid"
-                                                                size={20}
-                                                                color={i <= userRating ? '#e11d48' : '#d1d5db'}
-                                                            />
-                                                        </TouchableOpacity>
-                                                    ))}
-                                                </View>
-                                            </View>
-                                        </View>
-                                        {editingComment ? (
-                                            <TextInput
-                                                multiline
-                                                value={userComment}
-                                                onChangeText={setUserComment}
-                                                className="border border-gray-300 rounded-lg p-2 h-24 text-gray-800"
-                                                placeholder="Je rédige mon avis"
-                                            />
-                                        ) : (
-                                            <TouchableOpacity className="flex-row items-center px-4" onPress={() => setEditingComment(true)}>
-                                                <Text className="flex-grow">Je rédige mon avis</Text>
-                                                <IcoMoonIcon name="pen" size={20} color="#000" />
-                                            </TouchableOpacity>
-                                        )}
-                                    </View>
-                                </View>
-
-                                {/* Reviews Count */}
-                                <View className="flex-row align-center gap-2 mb-5">
-                                    <IcoMoonIcon
-                                        name="star-solid"
-                                        size={20}
-                                        color="#e11d48"
-                                    />
-                                    <Text className="font-semibold text-lg">146 avis</Text>
-                                </View>
-
-                                {/* Previous Reviews */}
-                                {[
-                                    {
-                                        id: '1',
-                                        name: 'Alicia',
-                                        comment: '“Une expérience culinaire inoubliable !\nNous avons découvert [Nom du restaurant] par hasard, et quelle belle surprise !\nL’accueil chaleureux, le cadre soigné et surtout les plats délicieux nous ont conquis.”',
-                                        rating: 4
-                                    },
-                                    {
-                                        id: '2',
-                                        name: 'Alicia',
-                                        comment: '“Une expérience culinaire inoubliable !\nNous avons découvert [Nom du restaurant] par hasard, et quelle belle surprise !\nL’accueil chaleureux, le cadre soigné et surtout les plats délicieux nous ont conquis.”',
-                                        rating: 4
-                                    }
-                                ].map(item => (
-                                    <View key={item.id} className="bg-gray-100 rounded-2xl p-2.5 mb-4">
-                                        <View className="py-4">
-                                            <View className="flex-row items-center mb-2.5">
-                                                <Image source={require('../assets/images/avatar.png')} className="w-[54] h-[54] rounded-full" />
-                                                <View className="ml-5">
-                                                    <Text className="font-medium text-base mb-2">{item.name}</Text>
-                                                    <View className="flex-row gap-1">
-                                                        {[1, 2, 3, 4].map(i => (
-                                                            <IcoMoonIcon
-                                                                key={i}
-                                                                name="star-solid"
-                                                                size={20}
-                                                                color={i <= item.rating ? '#e11d48' : '#d1d5db'}
-                                                            />
-                                                        ))}
-                                                    </View>
-                                                </View>
-                                            </View>
-                                            <Text className="italic font-light">{item.comment}</Text>
-                                        </View>
-                                    </View>
-                                ))}
-                            </View>
+                            <ReviewSection reviews={reservation.place.reviews} />
                         )}
 
                         {/* À propos Tab */}
                         {activeEditTab === 'apropos' && (
-                            <View className="pb-4">
-                                <ScrollView horizontal className="flex-row mb-9">
-                                    <Image source={require('../assets/images/info1.png')} className="w-[335] h-[195] rounded-xl mr-4" />
-                                    <Image source={require('../assets/images/info2.png')} className="w-[335] h-[195] rounded-xl mr-4" />
-                                </ScrollView>
-                                <Text className="text-lg font-semibold pl-3 mb-6">À propos de nous</Text>
-                                <Text className="text-base font-bold mb-4">
-                                    Bienvenue chez [Nom du restaurant], là où la passion pour la cuisine rencontre l’art de recevoir.
-                                </Text>
-                                <Text className="text-base mb-4">
-                                    Situé au cœur de [nom de la ville/quartier], notre établissement vous invite à découvrir une expérience culinaire authentique dans un cadre chaleureux et raffiné. Chez nous, chaque plat raconte une histoire, un mélange de tradition et de modernité, préparé avec des produits frais et de saison, soigneusement sélectionnés auprès de producteurs locaux.
-                                </Text>
-                                <Text className="text-base mb-4">
-                                    Que vous soyez amateur de [type de cuisine : cuisine française, méditerranéenne, gastronomique, etc.] ou curieux de nouvelles saveurs, notre carte variée saura éveiller vos papilles. Laissez-vous tenter par nos spécialités, comme [nom d’un plat signature], ou encore par nos desserts maison, une véritable douceur en fin de repas.
-                                </Text>
-                                <Text className="text-base mb-4">
-                                    Notre équipe, attentive et souriante, est là pour faire de votre visite un moment unique. Que ce soit pour un dîner romantique, un déjeuner en famille ou une soirée entre amis, [Nom du restaurant] est l’endroit idéal pour se retrouver et partager un repas mémorable.
-                                </Text>
-                                <Text className="text-base">
-                                    Réservez dès maintenant et venez vivre une aventure gustative qui éveillera tous vos sens. À très bientôt chez [Nom du restaurant] !
-                                </Text>
-                            </View>
+                            <AboutSection
+                                images={reservation.place.images}
+                                description={reservation.place.description} />
                         )}
                     </>
                 )}
             </View>
-
-            <CustomCalendarModal
-                visible={showCalendar}
-                onClose={() => setShowCalendar(false)}
-                onSelectDate={(newDate) => setDate(newDate)}
-                selectedDate="2025-04-02" // format: YYYY-MM-DD
-                disabledDates={['2025-04-08', '2025-04-15']} // fully booked dates
-            />
-
         </ScrollView>
 
     );

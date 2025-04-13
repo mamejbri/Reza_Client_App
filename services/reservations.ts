@@ -18,7 +18,7 @@ type Place = {
     images: string[];
 };
 
-export const fetchUserReservations = async (): Promise<any[]> => {
+export const fetchUserReservations = async () => {
     const user = await getCurrentUser();
     if (!user) return [];
 
@@ -26,17 +26,17 @@ export const fetchUserReservations = async (): Promise<any[]> => {
     const fullUser = await userRes.json();
 
     const placesRes = await fetch(`${API_BASE_URL}/places`);
-    const places: Place[] = await placesRes.json();
+    const places = await placesRes.json();
 
-    const enrichedReservations = (fullUser.reservations || []).map((res: Reservation) => {
-        const place = places.find((p) => p.id === res.place_id);
+    return (fullUser.reservations || []).map((res: Reservation) => {
+        const place = places.find((p: any) => p.id === res.place_id);
+
         return {
             ...res,
+            place,
             name: place?.name,
             address: place?.address,
             image: { uri: place?.images?.[0] || '' },
         };
     });
-
-    return enrichedReservations;
 };
