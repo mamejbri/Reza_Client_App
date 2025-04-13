@@ -10,6 +10,7 @@ import ReviewSection from '../components/ReviewSection';
 import AboutSection from '../components/AboutSection';
 import IcoMoonIcon from '../src/icons/IcoMoonIcon';
 import { isoToFrDisplay } from '../utils/date';
+import { updateReservation, cancelReservation } from '../services/reservations';
 
 type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
 
@@ -31,9 +32,20 @@ const ReservationDetailScreen = () => {
         setShowCancelModal(true);
     };
 
-    const onConfirmCancel = () => {
-        setShowCancelModal(false);
-        navigation.navigate('Appointments');
+    const onConfirmCancel = async () => {
+        const success = await cancelReservation(
+            reservation.id,
+            reservation.place.id,
+            reservation.date,
+            reservation.time
+        );
+
+        if (success) {
+            setShowCancelModal(false);
+            navigation.navigate('Appointments');
+        } else {
+            // Optionally show error
+        }
     };
 
     return (
@@ -125,11 +137,24 @@ const ReservationDetailScreen = () => {
                                 initialDateISO={dateISO}
                                 initialTime={time}
                                 availableSlots={reservation.place.available_slots}
-                                onConfirm={(p, dISO, t) => {
-                                    setPeople(p);
-                                    setDateISO(dISO);
-                                    setTime(t);
-                                    setTab('view');
+                                onConfirm={async (p, dISO, t) => {
+                                    const success = await updateReservation(
+                                        reservation.id,
+                                        reservation.place.id,
+                                        dateISO,
+                                        time,
+                                        dISO,
+                                        t,
+                                        p
+                                    );
+                                    if (success) {
+                                        setPeople(p);
+                                        setDateISO(dISO);
+                                        setTime(t);
+                                        setTab('view');
+                                    } else {
+                                        // Optionally show error
+                                    }
                                 }}
                             />
                         )}

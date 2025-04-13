@@ -9,9 +9,9 @@
         {
           "id": "res_001",
           "place_id": "place_001",
-          "date": "2025-04-15",
+          "date": "2025-04-16",
           "time": "20:00",
-          "people": 2,
+          "people": 5,
           "status": "confirmed"
         }
       ]
@@ -80,7 +80,7 @@
           },
           {
             "time": "20:00",
-            "reserved_by": "1"
+            "reserved_by": null
           }
         ],
         "2025-04-16": [
@@ -90,7 +90,7 @@
           },
           {
             "time": "20:00",
-            "reserved_by": null
+            "reserved_by": "1"
           }
         ]
       }

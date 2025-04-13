@@ -18,6 +18,13 @@ type Place = {
     images: string[];
 };
 
+type ReservationUpdate = {
+    reservationId: string;
+    newDate: string;
+    newTime: string;
+    newPeople: number;
+};
+
 export const fetchUserReservations = async () => {
     const user = await getCurrentUser();
     if (!user) return [];
@@ -39,4 +46,125 @@ export const fetchUserReservations = async () => {
             image: { uri: place?.images?.[0] || '' },
         };
     });
+};
+
+export const updateReservation = async (
+    reservationId: string,
+    placeId: string,
+    oldDate: string,
+    oldTime: string,
+    newDate: string,
+    newTime: string,
+    newPeople: number
+): Promise<boolean> => {
+    try {
+        const user = await getCurrentUser();
+        if (!user) return false;
+
+        // Fetch user
+        const userRes = await fetch(`${API_BASE_URL}/users/${user.id}`);
+        const userData = await userRes.json();
+
+        // Update reservation
+        const updatedReservations = (userData.reservations || []).map((res: any) =>
+            res.id === reservationId
+                ? {
+                    ...res,
+                    date: newDate,
+                    time: newTime,
+                    people: newPeople,
+                }
+                : res
+        );
+
+        await fetch(`${API_BASE_URL}/users/${user.id}`, {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ reservations: updatedReservations }),
+        });
+
+        // Update slots in place
+        const placeRes = await fetch(`${API_BASE_URL}/places/${placeId}`);
+        const place = await placeRes.json();
+        const updatedSlots = { ...place.available_slots };
+
+        // Clear old slot
+        if (updatedSlots[oldDate]) {
+            updatedSlots[oldDate] = updatedSlots[oldDate].map((s) =>
+                s.time === oldTime && s.reserved_by === user.id
+                    ? { ...s, reserved_by: null }
+                    : s
+            );
+        }
+
+        // Set new slot
+        if (updatedSlots[newDate]) {
+            updatedSlots[newDate] = updatedSlots[newDate].map((s) =>
+                s.time === newTime && s.reserved_by === null
+                    ? { ...s, reserved_by: user.id }
+                    : s
+            );
+        }
+
+        await fetch(`${API_BASE_URL}/places/${placeId}`, {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ available_slots: updatedSlots }),
+        });
+
+        return true;
+    } catch (err) {
+        console.error('updateReservation error:', err);
+        return false;
+    }
+};
+
+
+export const cancelReservation = async (
+    reservationId: string,
+    placeId: string,
+    date: string,
+    time: string
+): Promise<boolean> => {
+    try {
+        const user = await getCurrentUser();
+        if (!user) return false;
+
+        const userRes = await fetch(`${API_BASE_URL}/users/${user.id}`);
+        const userData = await userRes.json();
+
+        const updatedReservations = (userData.reservations || []).filter(
+            (res: any) => res.id !== reservationId
+        );
+
+        await fetch(`${API_BASE_URL}/users/${user.id}`, {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ reservations: updatedReservations }),
+        });
+
+        const placeRes = await fetch(`${API_BASE_URL}/places/${placeId}`);
+        const place = await placeRes.json();
+
+        const updatedSlots = { ...place.available_slots };
+
+        if (updatedSlots[date]) {
+            updatedSlots[date] = updatedSlots[date].map((s) =>
+                s.time === time && s.reserved_by === user.id
+                    ? { ...s, reserved_by: null }
+                    : s
+            );
+        }
+
+        await fetch(`${API_BASE_URL}/places/${placeId}`, {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ available_slots: updatedSlots }),
+        });
+
+        return true;
+    } catch (err) {
+        console.error('cancelReservation error:', err);
+        return false;
+    }
 };

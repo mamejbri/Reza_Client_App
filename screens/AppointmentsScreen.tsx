@@ -1,4 +1,5 @@
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useState } from 'react';
+import { useFocusEffect } from '@react-navigation/native';
 import { View, ScrollView, Text, TouchableOpacity, Image, FlatList, ActivityIndicator } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import IcoMoonIcon from '../src/icons/IcoMoonIcon';
@@ -10,15 +11,17 @@ const AppointmentsScreen: React.FC = () => {
     const [loading, setLoading] = useState(true);
     const navigation = useNavigation();
 
-    useEffect(() => {
-        const loadReservations = async () => {
+    useFocusEffect(
+        useCallback(() => {
+          const loadReservations = async () => {
             setLoading(true);
             const result = await fetchUserReservations();
             setReservations(result);
             setLoading(false);
-        };
-        loadReservations();
-    }, []);
+          };
+          loadReservations();
+        }, [])
+      );
 
     const hasReservations = reservations.length > 0;
 
@@ -81,13 +84,13 @@ const AppointmentsScreen: React.FC = () => {
                         )}
                         ListEmptyComponent={
                             <View className="px-4">
-                                <View className="bg-gray-100 p-6 rounded-2xl">
-                                    <Text className="mb-4">Vous n’avez pas encore de Réza</Text>
+                                <View className="bg-gray-100 py-8 px-4 rounded-2xl">
+                                    <Text className="text-lg mb-5">Vous n’avez pas encore de Réza</Text>
                                     <TouchableOpacity
-                                        onPress={() => navigation.navigate('Booking')}
-                                        className="bg-red-600 py-3 px-6 rounded-full self-start"
+                                        onPress={() => navigation.navigate('Home')}
+                                        className="btn-small self-start"
                                     >
-                                        <Text className="text-white font-semibold">Book ta réza</Text>
+                                        <Text className="btn-small-text">Book ta réza</Text>
                                     </TouchableOpacity>
                                 </View>
                             </View>
