@@ -9,6 +9,8 @@ import { getDistanceFromLatLng } from '../utils/distance';
 
 type SearchResultsRoute = RouteProp<RootStackParamList, 'SearchResults'>;
 
+const logo = require('../assets/images/logo.png');
+
 const SearchResultsScreen: React.FC = () => {
     const navigation = useNavigation();
     const { params } = useRoute<SearchResultsRoute>();
@@ -62,20 +64,29 @@ const SearchResultsScreen: React.FC = () => {
                         <>
                             {/* Search Info Card */}
                             <View className="px-4 pt-5">
-                                <View className="bg-gray-100 rounded-2xl p-4 mb-4">
-                                    <Text className="text-lg font-semibold mb-1">{category}</Text>
-                                    <Text className="text-base text-gray-700 mb-1">{city || 'Autour de moi'}</Text>
-                                    <Text className="text-sm text-gray-500 italic">À tout moment</Text>
+                                <View className="bg-neutral rounded-2xl p-4 mb-3 flex-row items-center gap-3">
+                                    <IcoMoonIcon name="search" size={30} color="#C53334" />
+                                    <View className="flex-column flex-grow">
+                                        <Text className="text-base font-bold mb-1">{category} - {city || 'Autour de moi'}</Text>
+                                        <Text className="text-base">À tout moment</Text>
+                                    </View>
+                                    <TouchableOpacity
+                                        onPress={() => navigation.goBack()}>
+                                        <IcoMoonIcon name="pen" size={30} color="#000" />
+                                    </TouchableOpacity>
                                 </View>
 
                                 {/* Filters */}
-                                <ScrollView horizontal showsHorizontalScrollIndicator={false} className="mb-4">
-                                    {['Disponibilité', 'Mieux noté', 'Filtres'].map((label) => (
+                                <ScrollView horizontal className="flex-row mb-3">
+                                    {['disponibilite', 'mieux-note', 'filtres'].map((t) => (
                                         <TouchableOpacity
-                                            key={label}
-                                            className="px-4 py-2 bg-white border border-gray-300 rounded-xl mr-3"
+                                            key={t}
+                                            className="mr-2 btn-light-icon"
                                         >
-                                            <Text className="text-sm font-medium text-black">{label}</Text>
+                                            <IcoMoonIcon name={t === 'disponibilite' ? 'time' : t === 'mieux-note' ? 'star' : 'setting'} size={20} color="#C53334" />
+                                            <Text className="btn-light-icon-text">
+                                                {t === 'disponibilite' ? 'Disponibilité' : t === 'mieux-note' ? 'Mieux notés' : 'Filtres'}
+                                            </Text>
                                         </TouchableOpacity>
                                     ))}
                                 </ScrollView>
@@ -85,18 +96,27 @@ const SearchResultsScreen: React.FC = () => {
                                     {['Ambiance', 'Terrasse', 'Romantique'].map((tag) => (
                                         <TouchableOpacity
                                             key={tag}
-                                            className="px-4 py-2 bg-red-100 rounded-xl mr-3"
-                                        >
-                                            <Text className="text-sm font-medium text-red-600">{tag}</Text>
+                                            className="flex-column items-center mr-2">
+                                            <Image
+                                                source={logo}
+                                                style={{ width: 55, height: 53, resizeMode: 'contain' }}
+                                                className="bg-neutral rounded-full mb-1"
+                                            />
+                                            <Text className="text-sm font-semibold">{tag}</Text>
                                         </TouchableOpacity>
                                     ))}
                                 </ScrollView>
+
+                                {/* Only show this text when there are results */}
+                                {results.length > 0 && (
+                                    <Text className="text-lg font-bold mb-6 text-center">Sélectionnez votre restaurant</Text>
+                                )}
                             </View>
                         </>
                     }
                     renderItem={({ item }) => (
                         <TouchableOpacity
-                            className="mx-4 mb-4 rounded-2xl overflow-hidden bg-gray-100 shadow"
+                            className="mx-4 mb-6 rounded-2xl overflow-hidden bg-gray-100"
                             onPress={() =>
                                 navigation.navigate('ReservationDetail', {
                                     reservation: {
@@ -111,25 +131,28 @@ const SearchResultsScreen: React.FC = () => {
                                 })
                             }
                         >
-                            <Image source={{ uri: item.images[0] }} className="w-full h-40" resizeMode="cover" />
+                            <Image source={{ uri: item.images[0] }} className="w-full h-[200]" resizeMode="cover" />
                             <View className="py-4 px-2.5 gap-3">
                                 <Text className="text-lg font-bold">{item.name}</Text>
                                 <View className="flex-row items-center gap-2">
                                     <IcoMoonIcon name="location" size={24} color="#C53334" />
-                                    <Text className="text-base font-medium">{item.address}</Text>
+                                    <Text className="text-base font-medium">
+                                        {item.address}
+                                    </Text>
                                 </View>
-                                <View className="flex-row items-center gap-5">
-                                    <View className="flex-row items-center bg-white p-4 gap-2 rounded-xl">
-                                        <IcoMoonIcon name="star-solid" size={24} color="#C53334" />
-                                        <Text className="text-base font-medium">{item.rating.toFixed(1)}</Text>
-                                    </View>
+                                <View className="flex-row items-center gap-2">
+                                    <IcoMoonIcon name="star-solid" size={24} color="#C53334" />
+                                    <Text className="text-base font-medium">
+
+                                        {item.rating.toFixed(1)} ({item.reviews.length} avis) $$$
+                                    </Text>
                                 </View>
                             </View>
                         </TouchableOpacity>
                     )}
                     ListEmptyComponent={
                         <View className="px-4">
-                            <View className="bg-gray-100 py-8 px-4 rounded-2xl">
+                            <View className="bg-neutral py-8 px-4 rounded-2xl">
                                 <Text className="text-lg mb-5">Aucun résultat trouvé</Text>
                                 <TouchableOpacity
                                     onPress={() => navigation.goBack()}
