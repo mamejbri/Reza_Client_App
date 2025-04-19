@@ -192,7 +192,7 @@ export const addReservation = async (
             date,
             time,
             people,
-            status: 'confirmed',
+            status: 'pending',
         };
 
         const updatedReservations = [...(userData.reservations || []), newReservation];
