@@ -8,5 +8,5 @@ export type RootStackParamList = {
   Profile: undefined;
   Appointments: undefined;
   ReservationDetail: { reservation: any };
-  SearchResults: { city: string; category: string; coords: { lat: number; lng: number } | null; };
+  SearchResults: { query: string; category: string; coords: { lat: number; lng: number } | null; };
 };

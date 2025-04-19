@@ -1,6 +1,6 @@
 import { API_BASE_URL } from '@env';
 
-export const getPlacesByCity = async (city?: string, categoryName?: string) => {
+export const getPlacesByQuery = async (query?: string, categoryName?: string) => {
     try {
         const placesRes = await fetch(`${API_BASE_URL}/places`);
         const categoriesRes = await fetch(`${API_BASE_URL}/categories`);
@@ -8,10 +8,21 @@ export const getPlacesByCity = async (city?: string, categoryName?: string) => {
 
         let filteredPlaces = places;
 
-        if (city) {
-            filteredPlaces = filteredPlaces.filter(
-                (place: any) => place.city.toLowerCase() === city.toLowerCase()
-            );
+        if (query?.trim()) {
+            const queryLower = query.toLowerCase().trim();
+
+            filteredPlaces = filteredPlaces.filter((place: any) => {
+                const cityMatch = place.city.toLowerCase() === queryLower;
+
+                const fullNameMatch = place.name.toLowerCase() === queryLower;
+
+                const nameWords = place.name.toLowerCase().split(/\s+/);
+                const nameWordMatch = nameWords.some(word =>
+                    word === queryLower || (word.startsWith(queryLower) && queryLower.length >= 4)
+                );
+
+                return cityMatch || fullNameMatch || nameWordMatch;
+            });
         }
 
         if (categoryName) {
@@ -28,7 +39,7 @@ export const getPlacesByCity = async (city?: string, categoryName?: string) => {
 
         return filteredPlaces;
     } catch (error) {
-        console.error('Error fetching places by city:', error);
+        console.error('Error fetching places by query:', error);
         return [];
     }
 };

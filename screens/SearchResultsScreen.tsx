@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { View, Text, ScrollView, FlatList, TouchableOpacity, Image, ActivityIndicator } from 'react-native';
 import { useRoute, useNavigation } from '@react-navigation/native';
 import IcoMoonIcon from '../src/icons/IcoMoonIcon';
-import { getPlacesByCity } from '../services/searchService'; // You’ll implement this
+import { getPlacesByQuery } from '../services/searchService';
 import type { RootStackParamList } from '../types/navigation';
 import type { RouteProp } from '@react-navigation/native';
 import { getDistanceFromLatLng } from '../utils/distance';
@@ -14,7 +14,7 @@ const logo = require('../assets/images/logo.png');
 const SearchResultsScreen: React.FC = () => {
     const navigation = useNavigation();
     const { params } = useRoute<SearchResultsRoute>();
-    const { city, category, coords } = params;
+    const { query, category, coords } = params;
 
     const [loading, setLoading] = useState(true);
     const [results, setResults] = useState<any[]>([]);
@@ -27,7 +27,7 @@ const SearchResultsScreen: React.FC = () => {
 
             if (coords) {
                 // Nearby search logic
-                const allPlaces = await getPlacesByCity(null, category); // get all of same category
+                const allPlaces = await getPlacesByQuery(null, category); // get all of same category
                 data = allPlaces.filter((place) => {
                     const dist = getDistanceFromLatLng(
                         coords.lat,
@@ -38,8 +38,8 @@ const SearchResultsScreen: React.FC = () => {
                     return dist <= 10; // Show places within 10 km radius
                 });
             } else {
-                // Normal city-based search
-                data = await getPlacesByCity(city, category);
+                // Normal query-based search
+                data = await getPlacesByQuery(query, category);
             }
 
             setResults(data);
@@ -47,7 +47,7 @@ const SearchResultsScreen: React.FC = () => {
         };
 
         fetchData();
-    }, [city, category, coords]);
+    }, [query, category, coords]);
 
 
     return (
@@ -67,7 +67,7 @@ const SearchResultsScreen: React.FC = () => {
                                 <View className="bg-neutral rounded-2xl p-4 mb-3 flex-row items-center gap-3">
                                     <IcoMoonIcon name="search" size={30} color="#C53334" />
                                     <View className="flex-column flex-grow">
-                                        <Text className="text-base font-bold mb-1">{category} - {city || 'Autour de moi'}</Text>
+                                        <Text className="text-base font-bold mb-1">{category} - {query?.trim() ? query : 'Autour de moi'}</Text>
                                         <Text className="text-base">À tout moment</Text>
                                     </View>
                                     <TouchableOpacity

@@ -62,7 +62,7 @@ const ReservationDetailScreen = () => {
                         </Text>
                     </View>
                     <View className="flex-row items-center gap-2">
-                        <IcoMoonIcon name="location" size={24} color="#C53334" />
+                        <IcoMoonIcon name="star-solid" size={24} color="#C53334" />
                         <Text className="text-base font-medium">
                             {reservation.place.rating} ({reservation.place.reviews.length} avis) $$$
                         </Text>

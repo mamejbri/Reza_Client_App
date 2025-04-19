@@ -68,7 +68,7 @@ const BookingScreen: React.FC = () => {
                             lat: position.coords.latitude,
                             lng: position.coords.longitude,
                         },
-                        city: null,
+                        query: null,
                         category,
                     });
                 },
@@ -84,12 +84,14 @@ const BookingScreen: React.FC = () => {
             );
         } else {
             navigation.navigate('SearchResults', {
-                city: item,
+                query: item,
                 coords: null,
                 category,
             });
         }
     };
+
+    const isSearchable = query.trim().length > 0;
 
     return (
         <ImageBackground source={background} resizeMode="cover" className="flex-1">
@@ -121,11 +123,21 @@ const BookingScreen: React.FC = () => {
                                     setQuery(text);
                                     setShowSuggestions(true);
                                 }}
+                                onSubmitEditing={() => {
+                                    if (query.trim()) handleSelect(query.trim());
+                                }}
+                                returnKeyType="search"
                             />
                             {loadingLocation ? (
                                 <ActivityIndicator size="small" color="#000" />
                             ) : (
-                                <IcoMoonIcon name="search" size={38} color="#000" />
+                                <TouchableOpacity
+                                    onPress={() => isSearchable && handleSelect(query.trim())}
+                                    disabled={!isSearchable}
+                                    style={{ opacity: isSearchable ? 1 : 0.3 }}
+                                >
+                                    <IcoMoonIcon name="search" size={38} color="#000" />
+                                </TouchableOpacity>
                             )}
                         </View>
 
