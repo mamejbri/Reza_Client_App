@@ -29,6 +29,14 @@
           "time": "10:00",
           "status": "pending",
           "people": 4
+        },
+        {
+          "id": "res_1745166252232",
+          "place_id": "place_005",
+          "date": "2025-04-21",
+          "time": "13:00",
+          "status": "pending",
+          "people": 2
         }
       ]
     },
@@ -544,7 +552,7 @@
           },
           {
             "time": "13:00",
-            "reserved_by": null
+            "reserved_by": "1"
           },
           {
             "time": "14:00",

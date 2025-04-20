@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, ScrollView, TouchableOpacity, Image } from 'react-native';
+import { View, Text, ScrollView, TouchableOpacity, Image, Platform, Linking, Alert } from 'react-native';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import type { RootStackParamList } from '../types/navigation';
@@ -11,6 +11,8 @@ import AboutSection from '../components/AboutSection';
 import IcoMoonIcon from '../src/icons/IcoMoonIcon';
 import { isoToFrDisplay } from '../utils/date';
 import { updateReservation, cancelReservation, addReservation } from '../services/reservations';
+import RNCalendarEvents from 'react-native-calendar-events';
+import dayjs from 'dayjs';
 
 type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
 
@@ -28,9 +30,7 @@ const ReservationDetailScreen = () => {
 
     const moment = Number(time.split(':')[0]) < 18 ? 'Midi' : 'Soir';
 
-    const handleCancel = () => {
-        setShowCancelModal(true);
-    };
+    const handleCancel = () => setShowCancelModal(true);
 
     const onConfirmCancel = async () => {
         const success = await cancelReservation(
@@ -39,20 +39,76 @@ const ReservationDetailScreen = () => {
             reservation.date,
             reservation.time
         );
-
         if (success) {
             setShowCancelModal(false);
             navigation.navigate('Appointments');
-        } else {
-            // Optionally show error
         }
+    };
+
+    const addToCalendar = async () => {
+        try {
+            // Request permission to access calendar
+            const permission = await RNCalendarEvents.requestPermissions();
+            if (permission !== 'authorized') {
+                Alert.alert(
+                    'Permission refusée',
+                    "L'accès au calendrier est nécessaire pour ajouter l'événement."
+                );
+                return;
+            }
+
+            // Build start and end date in ISO format
+            const startDate = dayjs(`${dateISO}T${time}`).toISOString();
+            const endDate = reservation.program?.duration_minutes
+                ? dayjs(startDate).add(reservation.program.duration_minutes, 'minutes').toISOString()
+                : dayjs(startDate).add(40, 'minutes').toISOString();
+
+            // Attempt to save the event to the default calendar
+            const eventId = await RNCalendarEvents.saveEvent(
+                `Réservation chez ${reservation.place.name}`,
+                {
+                    startDate,
+                    endDate,
+                    location: reservation.place.address,
+                    notes: reservation.program
+                        ? `Programme : ${reservation.program.title}`
+                        : `Pour ${people} personne(s)`,
+                    calendar: ['default'],
+                }
+            );
+
+            if (eventId) {
+                Alert.alert('Ajouté au calendrier', "Votre réservation a été ajoutée avec succès.");
+            } else {
+                Alert.alert('Erreur', "L'événement n'a pas pu être ajouté.");
+            }
+        } catch (error) {
+            console.error('Erreur lors de l’ajout au calendrier:', error);
+            Alert.alert('Erreur', "Une erreur s'est produite lors de l'ajout à votre calendrier.");
+        }
+    };
+
+
+    const openInMaps = () => {
+        const coords = `${reservation.place.location.lat},${reservation.place.location.lng}`;
+        const label = encodeURIComponent(reservation.place.name);
+        const scheme = Platform.select({ ios: 'maps:', android: 'geo:' });
+        const url =
+            Platform.OS === 'ios'
+                ? `${scheme}//?q=${label}&ll=${coords}`
+                : `${scheme}0,0?q=${coords}(${label})`;
+        Linking.openURL(url);
     };
 
     return (
         <ScrollView className="bg-white flex-1 px-4">
             {/* Header */}
             <View className="rounded-2xl overflow-hidden bg-gray-100 shadow mt-5">
-                <Image source={{ uri: reservation.place.images[0] }} className="w-full h-[200]" resizeMode="cover" />
+                <Image
+                    source={{ uri: reservation.place.images[0] }}
+                    className="w-full h-[200]"
+                    resizeMode="cover"
+                />
                 <View className="py-4 px-2.5 gap-3">
                     <Text className="text-lg font-bold">{reservation.place.name}</Text>
                     <View className="flex-row items-center gap-2">
@@ -73,9 +129,9 @@ const ReservationDetailScreen = () => {
             <View key={tab}>
                 {tab === 'view' ? (
                     <>
-                        {/* Action buttons */}
+                        {/* Action Buttons */}
                         <ScrollView horizontal className="my-6 flex-row">
-                            <TouchableOpacity className="btn-small-icon mr-2">
+                            <TouchableOpacity onPress={addToCalendar} className="btn-small-icon mr-2">
                                 <IcoMoonIcon name="calendar" size={20} color="#fff" />
                                 <Text className="btn-small-icon-text">Ajouter à mon agenda</Text>
                             </TouchableOpacity>
@@ -83,7 +139,7 @@ const ReservationDetailScreen = () => {
                                 <IcoMoonIcon name="notifcations" size={20} color="#fff" />
                                 <Text className="btn-small-icon-text">Me notifier 1 jour avant</Text>
                             </TouchableOpacity>
-                            <TouchableOpacity className="btn-small-icon">
+                            <TouchableOpacity onPress={openInMaps} className="btn-small-icon">
                                 <IcoMoonIcon name="calendar" size={20} color="#fff" />
                                 <Text className="btn-small-icon-text">Itinéraire</Text>
                             </TouchableOpacity>
@@ -124,9 +180,27 @@ const ReservationDetailScreen = () => {
                                     className={`mr-2 ${activeEditTab === t ? 'btn-small-icon' : 'btn-light-icon'}`}
                                     onPress={() => setActiveEditTab(t)}
                                 >
-                                    <IcoMoonIcon name={t === 'rendezvous' ? 'time' : t === 'menu' ? 'book' : t === 'avis' ? 'star-solid' : 'info'} size={20} color={`${activeEditTab === t ? '#fff' : '#C53334'}`} />
+                                    <IcoMoonIcon
+                                        name={
+                                            t === 'rendezvous'
+                                                ? 'time'
+                                                : t === 'menu'
+                                                    ? 'book'
+                                                    : t === 'avis'
+                                                        ? 'star-solid'
+                                                        : 'info'
+                                        }
+                                        size={20}
+                                        color={activeEditTab === t ? '#fff' : '#C53334'}
+                                    />
                                     <Text className={activeEditTab === t ? 'btn-small-icon-text' : 'btn-light-icon-text'}>
-                                        {t === 'rendezvous' ? 'Rendez-vous' : t === 'menu' ? 'Menu' : t === 'avis' ? 'Avis' : 'À propos'}
+                                        {t === 'rendezvous'
+                                            ? 'Rendez-vous'
+                                            : t === 'menu'
+                                                ? 'Menu'
+                                                : t === 'avis'
+                                                    ? 'Avis'
+                                                    : 'À propos'}
                                     </Text>
                                 </TouchableOpacity>
                             ))}
@@ -204,7 +278,12 @@ const ReservationDetailScreen = () => {
                         {activeEditTab === 'menu' && (
                             <View>
                                 {reservation.place.menu.map((img: string) => (
-                                    <Image key={img} source={{ uri: img }} className="w-full h-[500] rounded-xl mb-3" resizeMode="cover" />
+                                    <Image
+                                        key={img}
+                                        source={{ uri: img }}
+                                        className="w-full h-[500] rounded-xl mb-3"
+                                        resizeMode="cover"
+                                    />
                                 ))}
                             </View>
                         )}
@@ -218,13 +297,13 @@ const ReservationDetailScreen = () => {
                         {activeEditTab === 'apropos' && (
                             <AboutSection
                                 images={reservation.place.images}
-                                description={reservation.place.description} />
+                                description={reservation.place.description}
+                            />
                         )}
                     </>
                 )}
             </View>
         </ScrollView>
-
     );
 };
 
