@@ -4,12 +4,27 @@ import 'dayjs/locale/fr';
 import { toISO, isoToFrDisplay } from '../utils/date';
 import CustomCalendarModal from './CustomCalendarModal';
 
+interface Program {
+    id: string;
+    title: string;
+    description: string;
+    price: number;
+    duration_minutes: number;
+}
+
 interface Props {
-    initialPeople: number;
+    initialPeople?: number;
     initialDateISO: string;
     initialTime: string;
     availableSlots: Record<string, { time: string; reserved_by: string | null }[]>;
-    onConfirm: (people: number, dateISO: string, time: string) => void;
+    programs?: Program[];
+    initialProgramId?: string;
+    onConfirm: (
+        people: number | undefined,
+        dateISO: string,
+        time: string,
+        programId?: string
+    ) => Promise<void>;
 }
 
 const EditReservationForm: React.FC<Props> = ({
@@ -17,15 +32,24 @@ const EditReservationForm: React.FC<Props> = ({
     initialDateISO,
     initialTime,
     availableSlots,
+    programs = [],
+    initialProgramId,
     onConfirm,
 }) => {
-    const [people, setPeople] = useState(initialPeople);
+    const [people, setPeople] = useState(initialPeople || 1);
     const [dateISO, setDateISO] = useState(initialDateISO);
     const [time, setTime] = useState(initialTime);
     const [showCal, setShowCal] = useState(false);
+    const [selectedProgramId, setSelectedProgramId] = useState<string | null>(initialProgramId ?? null);
+    const [expandedProgramId, setExpandedProgramId] = useState<string | null>(
+        initialProgramId ?? programs?.[0]?.id ?? null
+    );
+    const [isSaving, setIsSaving] = useState(false);
+
+    const isProgramBased = programs.length > 0;
 
     const freeSlots = useMemo(() => {
-        const slots = availableSlots[dateISO] || [];
+        const slots = availableSlots?.[dateISO] ?? [];
         return slots.filter(s => !s.reserved_by).map(s => s.time);
     }, [availableSlots, dateISO]);
 
@@ -39,13 +63,60 @@ const EditReservationForm: React.FC<Props> = ({
 
     return (
         <View>
-            {/* People */}
-            <View className="flex-column mb-3">
-                <Text className="text-lg font-semibold pl-3">Je réserve ma place</Text>
-                <View className="rounded-2xl overflow-hidden bg-gray-100 shadow">
-                    <View className="py-5 px-3 gap-3">
-                        <View className="flex-row items-center gap-2">
-                            <Text className="text-base font-bold flex-grow">Nombre de personnes :</Text>
+            {/* Either Program Picker or People Counter */}
+            {isProgramBased ? (
+                <View className="flex-column mb-3">
+                    <Text className="text-lg font-semibold pl-3">Choisir un programme</Text>
+                    {programs.map((prog) => {
+                        const isExpanded = expandedProgramId === prog.id;
+                        const isSelected = selectedProgramId === prog.id;
+
+                        return (
+                            <View
+                                key={prog.id}
+                                className={`rounded-2xl overflow-hidden bg-gray-100 shadow min-h-[60px] mb-3 flex-column justify-center ${isSelected ? 'border-2 border-danger' : 'border border-transparent'
+                                    }`}
+                            >
+                                {/* Header */}
+                                <TouchableOpacity
+                                    onPress={() => setExpandedProgramId(prev => (prev === prog.id ? null : prog.id))}
+                                    className="p-2.5"
+                                >
+                                    <Text className="text-lg font-bold">{prog.title}</Text>
+                                </TouchableOpacity>
+
+                                {/* Body */}
+                                {isExpanded && (
+                                    <View className="px-3 pb-4 gap-4">
+                                        <Text className="text-lg font-medium">{prog.description}</Text>
+                                        <Text className="text-lg">
+                                            {prog.price} dh · {prog.duration_minutes} min
+                                        </Text>
+
+                                        {!isSelected && (
+                                            <TouchableOpacity
+                                                accessibilityRole="button"
+                                                onPress={() => {
+                                                    setSelectedProgramId(prog.id);
+                                                    setExpandedProgramId(prog.id);
+                                                }}
+                                                className="btn-small-icon self-start"
+                                            >
+                                                <Text className="btn-small-icon-text">Choisir</Text>
+                                            </TouchableOpacity>
+                                        )}
+                                    </View>
+                                )}
+                            </View>
+                        );
+                    })}
+                </View>
+            ) : (
+                <View className="flex-column mb-3">
+                    <Text className="text-lg font-semibold pl-3">Je réserve ma place</Text>
+                    <View className="rounded-2xl overflow-hidden bg-gray-100 shadow py-5 px-3 gap-3">
+                        <View className="flex-row items-center justify-between">
+                            <Text className="text-base font-bold">Nombre de personnes :</Text>
                             <View className="flex-row items-center gap-2">
                                 <TouchableOpacity className="btn-smallest-icon" onPress={() => setPeople(p => Math.max(1, p - 1))}>
                                     <Text className="text-white text-xl">-</Text>
@@ -60,9 +131,9 @@ const EditReservationForm: React.FC<Props> = ({
                         </View>
                     </View>
                 </View>
-            </View>
+            )}
 
-            {/* Date */}
+            {/* Date Picker */}
             <View className="flex-column mb-3">
                 <Text className="text-lg font-semibold pl-3">Pour le</Text>
                 <View className="rounded-2xl overflow-hidden bg-gray-100 shadow">
@@ -74,7 +145,7 @@ const EditReservationForm: React.FC<Props> = ({
                 </View>
             </View>
 
-            {/* Time */}
+            {/* Time Selection */}
             <View className="flex-column">
                 <Text className="text-lg font-semibold pl-3">À</Text>
                 <View className="rounded-2xl overflow-hidden bg-gray-100 shadow py-5 px-3 gap-4">
@@ -111,12 +182,17 @@ const EditReservationForm: React.FC<Props> = ({
                 </View>
             </View>
 
-            {/* Confirm */}
+            {/* Confirm Button */}
             <TouchableOpacity
-                onPress={() => onConfirm(people, dateISO, time)}
-                className="btn-primary mt-6 mb-4"
-                disabled={!time} >
-                <Text className="btn-primary-text">Je confirme ma REZA</Text>
+                onPress={async () => {
+                    setIsSaving(true);
+                    await onConfirm(isProgramBased ? undefined : people, dateISO, time, selectedProgramId ?? undefined);
+                    setIsSaving(false);
+                }}
+                disabled={isSaving || !time || (isProgramBased && !selectedProgramId)}
+                className={`btn-primary mt-6 mb-4 ${isSaving || !time || (isProgramBased && !selectedProgramId) ? 'opacity-50' : ''}`}
+            >
+                <Text className="btn-primary-text">{isSaving ? 'Chargement...' : 'Je confirme ma REZA'}</Text>
             </TouchableOpacity>
 
             {/* Calendar Modal */}
@@ -128,7 +204,6 @@ const EditReservationForm: React.FC<Props> = ({
                     if (!iso) return;
                     setDateISO(iso);
                 }}
-
                 selectedDate={dateISO}
                 disabledDates={Object.entries(availableSlots)
                     .filter(([, slots]) => slots.every(s => s.reserved_by))

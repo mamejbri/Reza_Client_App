@@ -90,16 +90,19 @@ const ReservationDetailScreen = () => {
                         </ScrollView>
 
                         <ReservationSummary
-                            people={people}
+                            people={reservation.program ? undefined : people}
+                            program={reservation.program}
                             date={isoToFrDisplay(dateISO)}
                             time={time}
                             moment={moment}
                         />
 
                         <View className="flex-column mt-6 gap-3 mb-4">
-                            <TouchableOpacity onPress={() => setTab('edit')} className="btn-primary">
-                                <Text className="btn-primary-text">Déplacer ma Réza</Text>
-                            </TouchableOpacity>
+                            {reservation.status !== 'confirmed' && (
+                                <TouchableOpacity onPress={() => setTab('edit')} className="btn-primary">
+                                    <Text className="btn-primary-text">Déplacer ma Réza</Text>
+                                </TouchableOpacity>
+                            )}
                             <TouchableOpacity onPress={handleCancel} className="btn-black">
                                 <Text className="btn-black-text">Annuler ma Réza</Text>
                             </TouchableOpacity>
@@ -132,24 +135,38 @@ const ReservationDetailScreen = () => {
                         {/* Rendez-vous Tab */}
                         {activeEditTab === 'rendezvous' && (
                             <EditReservationForm
-                                key={`${people}-${dateISO}-${time}`}
+                                key={`${people}-${dateISO}-${time}-${reservation.program_id || ''}`}
                                 initialPeople={people}
                                 initialDateISO={dateISO}
                                 initialTime={time}
                                 availableSlots={reservation.place.available_slots}
-                                onConfirm={async (p, dISO, t) => {
+                                programs={reservation.place.programs}
+                                initialProgramId={reservation.program_id}
+                                onConfirm={async (p, dISO, t, programId) => {
                                     let success = false;
 
                                     if (reservation.id === 'new') {
-                                        // New reservation
-                                        success = await addReservation(
+                                        const newRes = await addReservation(
                                             reservation.place.id,
                                             dISO,
                                             t,
-                                            p
+                                            p,
+                                            programId
                                         );
+                                        success = !!newRes;
+
+                                        if (newRes) {
+                                            reservation.id = newRes.id;
+                                            reservation.date = newRes.date;
+                                            reservation.time = newRes.time;
+                                            reservation.people = newRes.people;
+                                            reservation.status = newRes.status;
+                                            reservation.program_id = newRes.program_id;
+                                            reservation.program = programId
+                                                ? reservation.place.programs.find(pr => pr.id === programId)
+                                                : undefined;
+                                        }
                                     } else {
-                                        // Update existing
                                         success = await updateReservation(
                                             reservation.id,
                                             reservation.place.id,
@@ -157,17 +174,27 @@ const ReservationDetailScreen = () => {
                                             time,
                                             dISO,
                                             t,
-                                            p
+                                            p,
+                                            programId
                                         );
+
+                                        if (success) {
+                                            reservation.date = dISO;
+                                            reservation.time = t;
+                                            reservation.people = p;
+                                            reservation.program_id = programId ?? reservation.program_id;
+                                            reservation.program = programId
+                                                ? reservation.place.programs.find(pr => pr.id === programId)
+                                                : undefined;
+                                        }
                                     }
 
                                     if (success) {
-                                        setPeople(p);
+                                        setPeople(p ?? people);
                                         setDateISO(dISO);
                                         setTime(t);
                                         setTab('view');
                                     } else {
-                                        // Optionally show error
                                         console.warn('Failed to save reservation');
                                     }
                                 }}

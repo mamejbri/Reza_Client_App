@@ -7,8 +7,9 @@ type Reservation = {
     place_id: string;
     date: string;
     time: string;
-    people: number;
+    people?: number;
     status: string;
+    program_id?: string;
 };
 
 type Place = {
@@ -22,7 +23,8 @@ type ReservationUpdate = {
     reservationId: string;
     newDate: string;
     newTime: string;
-    newPeople: number;
+    newPeople?: number;
+    newProgramId?: string
 };
 
 export const fetchUserReservations = async () => {
@@ -37,6 +39,9 @@ export const fetchUserReservations = async () => {
 
     return (fullUser.reservations || []).map((res: Reservation) => {
         const place = places.find((p: any) => p.id === res.place_id);
+        const program = res.program_id
+            ? place?.programs?.find((p: any) => p.id === res.program_id)
+            : undefined;
 
         return {
             ...res,
@@ -44,6 +49,7 @@ export const fetchUserReservations = async () => {
             name: place?.name,
             address: place?.address,
             image: { uri: place?.images?.[0] || '' },
+            program,
         };
     });
 };
@@ -55,7 +61,8 @@ export const updateReservation = async (
     oldTime: string,
     newDate: string,
     newTime: string,
-    newPeople: number
+    newPeople?: number,
+    newProgramId?: string
 ): Promise<boolean> => {
     try {
         const user = await getCurrentUser();
@@ -73,6 +80,7 @@ export const updateReservation = async (
                     date: newDate,
                     time: newTime,
                     people: newPeople,
+                    program_id: newProgramId ?? res.program_id,
                 }
                 : res
         );
@@ -173,59 +181,60 @@ export const addReservation = async (
     placeId: string,
     date: string,
     time: string,
-    people: number
-): Promise<boolean> => {
+    people?: number,
+    programId?: string
+): Promise<Reservation | null> => {
     try {
         const user = await getCurrentUser();
-        if (!user) return false;
+        if (!user) return null;
 
-        // Generate a unique reservation ID
-        const reservationId = `res_${Date.now()}`;
-
-        // Fetch current user data
+        /* Guard‑rail: refuse duplicate slot for same user */
         const userRes = await fetch(`${API_BASE_URL}/users/${user.id}`);
         const userData = await userRes.json();
+        const alreadyExists = (userData.reservations || []).some(
+            (r: any) => r.place_id === placeId && r.date === date && r.time === time
+        );
+        if (alreadyExists) return null;
+
+        /* Generate a unique reservation ID */
+        const reservationId = `res_${Date.now()}`;
 
         const newReservation: Reservation = {
             id: reservationId,
             place_id: placeId,
             date,
             time,
-            people,
             status: 'pending',
+            ...(people ? { people } : {}),
+            ...(programId ? { program_id: programId } : {}),
         };
 
+        /* Add to user */
         const updatedReservations = [...(userData.reservations || []), newReservation];
-
-        // Update user reservations
         await fetch(`${API_BASE_URL}/users/${user.id}`, {
             method: 'PATCH',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ reservations: updatedReservations }),
         });
 
-        // Fetch and update place slots
+        /* Mark slot as taken */
         const placeRes = await fetch(`${API_BASE_URL}/places/${placeId}`);
         const place = await placeRes.json();
         const updatedSlots = { ...place.available_slots };
-
         if (updatedSlots[date]) {
             updatedSlots[date] = updatedSlots[date].map((s: any) =>
-                s.time === time && s.reserved_by === null
-                    ? { ...s, reserved_by: user.id }
-                    : s
+                s.time === time && s.reserved_by === null ? { ...s, reserved_by: user.id } : s
             );
         }
-
         await fetch(`${API_BASE_URL}/places/${placeId}`, {
             method: 'PATCH',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ available_slots: updatedSlots }),
         });
 
-        return true;
+        return newReservation;
     } catch (err) {
         console.error('addReservation error:', err);
-        return false;
+        return null;
     }
 };

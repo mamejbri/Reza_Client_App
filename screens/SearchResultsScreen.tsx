@@ -48,7 +48,7 @@ const SearchResultsScreen: React.FC = () => {
                         place.location.lat,
                         place.location.lng
                     );
-                    return dist <= 10;
+                    return dist <= 10; // Show places within 10 km radius
                 });
             } else {
                 data = await getPlacesByQuery(query, category);
@@ -103,6 +103,7 @@ const SearchResultsScreen: React.FC = () => {
                                     </TouchableOpacity>
                                 </View>
 
+                                {/* Filters */}
                                 <ScrollView horizontal className="flex-row mb-3">
                                     {['disponibilite', 'mieux-note', 'filtres'].map((t) => {
                                         const isDisponibiliteActive = t === 'disponibilite' && selectedDate && selectedDate !== todayISO;
@@ -136,6 +137,7 @@ const SearchResultsScreen: React.FC = () => {
                                     })}
                                 </ScrollView>
 
+                                {/* Special Tags (static for now) */}
                                 <ScrollView horizontal showsHorizontalScrollIndicator={false} className="mb-6">
                                     {['Ambiance', 'Terrasse', 'Romantique'].map((tag) => (
                                         <TouchableOpacity key={tag} className="flex-column items-center mr-2">
@@ -187,15 +189,55 @@ const SearchResultsScreen: React.FC = () => {
                                 <Image source={{ uri: item.images[0] }} className="w-full h-[200]" resizeMode="cover" />
                                 <View className="py-4 px-2.5 gap-3">
                                     <Text className="text-lg font-bold">{item.name}</Text>
-                                    <View className="flex-row items-center gap-2">
+                                    <View className="flex-row items-center gap-2 px-1.5">
                                         <IcoMoonIcon name="location" size={24} color="#C53334" />
                                         <Text className="text-base font-medium">{item.address}</Text>
                                     </View>
-                                    <View className="flex-row items-center gap-2">
+                                    <View className="flex-row items-center gap-2 px-1.5">
                                         <IcoMoonIcon name="star-solid" size={24} color="#C53334" />
                                         <Text className="text-base font-medium">
                                             {item.rating.toFixed(1)} ({item.reviews.length} avis) $$$
                                         </Text>
+                                    </View>
+                                    <View className="flex-column gap-2 px-1.5">
+                                        <Text className="text-base font-medium">Les prochaines disponibilités :</Text>
+
+                                        {/* Available Time Slots */}
+                                        {selectedDate && item.available_slots?.[selectedDate] && (
+                                            <View className="gap-2">
+                                                {(['Midi', 'Soir'] as const).map((momentKey) => {
+                                                    const availableSlots = item.available_slots[selectedDate]
+                                                        .filter((slot: any) => slot.reserved_by === null)
+                                                        .map((slot: any) => slot.time);
+
+                                                    const slotsForMoment = availableSlots.filter(s =>
+                                                        momentKey === 'Midi'
+                                                            ? Number(s.split(':')[0]) < 18
+                                                            : Number(s.split(':')[0]) >= 18
+                                                    );
+
+                                                    if (slotsForMoment.length === 0) return null;
+
+                                                    return (
+                                                        <View key={momentKey} className="flex-row items-center gap-4">
+                                                            <View className="rounded-2xl py-2 px-3 bg-danger">
+                                                                <Text className="text-base font-semibold text-white">{momentKey}</Text>
+                                                            </View>
+                                                            <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+                                                                {slotsForMoment.map((slot) => (
+                                                                    <View
+                                                                        key={slot}
+                                                                        className="rounded-2xl py-2 px-3 mr-2 bg-white"
+                                                                    >
+                                                                        <Text className="text-base font-semibold text-black">{slot}</Text>
+                                                                    </View>
+                                                                ))}
+                                                            </ScrollView>
+                                                        </View>
+                                                    );
+                                                })}
+                                            </View>
+                                        )}
                                     </View>
                                 </View>
                             </TouchableOpacity>
@@ -226,8 +268,6 @@ const SearchResultsScreen: React.FC = () => {
                 onClose={() => setShowDateModal(false)}
                 selectedDate={selectedDate}
                 onSelectDate={(dateISO) => {
-                    console.log('Selected from modal:', dateISO);
-                    console.log('Today:', todayISO);
                     setSelectedDate(dateISO);
                     setShowDateModal(false);
                 }}
