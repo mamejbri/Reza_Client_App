@@ -6,6 +6,9 @@ type User = {
     email: string;
     phone: string;
     password: string;
+    firstName?: string;
+    lastName?: string;
+    photo?: string;
 };
 
 export const signup = async (
@@ -26,7 +29,7 @@ export const signup = async (
         const createRes = await fetch(`${API_BASE_URL}/users`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ phone, email, password }),
+            body: JSON.stringify({ phone, email, password, firstName: '', lastName: '', photo: '' }),
         });
 
         if (!createRes.ok) {
@@ -69,6 +72,34 @@ export const login = async (
     } catch (err) {
         console.error(err);
         return { success: false, error: 'NETWORK_ERROR' };
+    }
+};
+
+export const updateCurrentUser = async (updates: Partial<User>): Promise<{ success: boolean }> => {
+    try {
+        const currentUser = await getCurrentUser();
+        if (!currentUser) {
+            return { success: false };
+        }
+
+        const updatedUser = { ...currentUser, ...updates };
+
+        const res = await fetch(`${API_BASE_URL}/users/${currentUser.id}`, {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(updates),
+        });
+
+        if (!res.ok) {
+            return { success: false };
+        }
+
+        await AsyncStorage.setItem('user', JSON.stringify(updatedUser));
+
+        return { success: true };
+    } catch (error) {
+        console.error(error);
+        return { success: false };
     }
 };
 

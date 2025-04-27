@@ -60,14 +60,9 @@ const Navbar: React.FC<{ transparent?: boolean }> = ({ transparent }) => {
                     </TouchableOpacity>
                 )}
 
-                {/* Right: Profile/Login button */}
+                {/* Right: Login button */}
                 <TouchableOpacity
                     onPress={() => navigation.navigate(isLoggedIn ? 'Appointments' : 'Login')}
-                    onLongPress={() => {
-                        if (isLoggedIn) {
-                            navigation.navigate('Profile');
-                        }
-                    }}
                     className="btn-icon" >
                     <IcoMoonIcon name="profile" size={30} color="#fff" />
                 </TouchableOpacity>

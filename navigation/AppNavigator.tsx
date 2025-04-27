@@ -4,7 +4,6 @@ import HomeScreen from '../screens/HomeScreen';
 import BookingScreen from '../screens/BookingScreen';
 import LoginScreen from '../screens/LoginScreen';
 import SignupScreen from '../screens/SignupScreen';
-import ProfileScreen from '../screens/ProfileScreen';
 import AppointmentsScreen from '../screens/AppointmentsScreen';
 import ReservationDetailScreen from '../screens/ReservationDetailScreen';
 import SearchResultsScreen from '../screens/SearchResultsScreen';
@@ -19,7 +18,6 @@ const AppNavigator = () => (
     <Stack.Screen name="Booking" component={BookingScreen} options={{ headerTransparent: true, header: () => <Navbar transparent /> }} />
     <Stack.Screen name="Login" component={LoginScreen} options={{ header: () => <Navbar /> }} />
     <Stack.Screen name="Signup" component={SignupScreen} options={{ header: () => <Navbar /> }} />
-    <Stack.Screen name="Profile" component={ProfileScreen} options={{ header: () => <Navbar /> }} />
     <Stack.Screen name="Appointments" component={AppointmentsScreen} options={{ header: () => <Navbar /> }} />
     <Stack.Screen name="ReservationDetail" component={ReservationDetailScreen} options={{ header: () => <Navbar /> }} />
     <Stack.Screen name="SearchResults" component={SearchResultsScreen} options={{ header: () => <Navbar /> }} />

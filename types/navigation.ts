@@ -5,7 +5,6 @@ export type RootStackParamList = {
   Booking: { background: ImageSourcePropType, category: string };
   Login: undefined;
   Signup: undefined;
-  Profile: undefined;
   Appointments: undefined;
   ReservationDetail: { reservation: any };
   SearchResults: { query: string; category: string; coords: { lat: number; lng: number } | null; };

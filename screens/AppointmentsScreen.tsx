@@ -4,6 +4,7 @@ import { View, ScrollView, Text, TouchableOpacity, Image, FlatList, ActivityIndi
 import { useNavigation } from '@react-navigation/native';
 import IcoMoonIcon from '../src/icons/IcoMoonIcon';
 import { fetchUserReservations } from '../services/reservations';
+import Profile from '../components/Profile';
 
 const AppointmentsScreen: React.FC = () => {
     const [activeTab, setActiveTab] = useState<'appointments' | 'info'>('appointments');
@@ -13,15 +14,15 @@ const AppointmentsScreen: React.FC = () => {
 
     useFocusEffect(
         useCallback(() => {
-          const loadReservations = async () => {
-            setLoading(true);
-            const result = await fetchUserReservations();
-            setReservations(result);
-            setLoading(false);
-          };
-          loadReservations();
+            const loadReservations = async () => {
+                setLoading(true);
+                const result = await fetchUserReservations();
+                setReservations(result);
+                setLoading(false);
+            };
+            loadReservations();
         }, [])
-      );
+    );
 
     const hasReservations = reservations.length > 0;
 
@@ -110,7 +111,7 @@ const AppointmentsScreen: React.FC = () => {
                             <Text className={`${activeTab === 'info' ? 'btn-small-icon-text' : 'btn-light-icon-text'}`}>Mes informations</Text>
                         </TouchableOpacity>
                     </View>
-                    <Text className="text-gray-400 italic">(vide pour le moment)</Text>
+                    <Profile />
                 </ScrollView>
             )}
         </View>
