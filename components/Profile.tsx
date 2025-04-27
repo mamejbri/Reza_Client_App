@@ -6,6 +6,7 @@ import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import type { RootStackParamList } from '../types/navigation';
 import { launchImageLibrary } from 'react-native-image-picker';
 import IcoMoonIcon from '../src/icons/IcoMoonIcon';
+import ChangePasswordModal from '../components/ChangePasswordModal';
 
 type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
 
@@ -18,6 +19,7 @@ const Profile: React.FC = () => {
     const [photo, setPhoto] = useState<string | undefined>();
     const [editing, setEditing] = useState(false);
     const [loading, setLoading] = useState(false);
+    const [passwordModalVisible, setPasswordModalVisible] = useState(false);
 
     const [originalFirstName, setOriginalFirstName] = useState('');
     const [originalLastName, setOriginalLastName] = useState('');
@@ -211,7 +213,7 @@ const Profile: React.FC = () => {
                     </>
                 ) : (
                     <>
-                        <TouchableOpacity className="btn-primary w-full">
+                        <TouchableOpacity onPress={() => setPasswordModalVisible(true)} className="btn-primary w-full">
                             <Text className="btn-primary-text text-center">Modifier mon mot de passe</Text>
                         </TouchableOpacity>
 
@@ -221,6 +223,7 @@ const Profile: React.FC = () => {
                     </>
                 )}
             </View>
+            <ChangePasswordModal visible={passwordModalVisible} onClose={() => setPasswordModalVisible(false)} />
         </View>
     );
 };

@@ -103,6 +103,36 @@ export const updateCurrentUser = async (updates: Partial<User>): Promise<{ succe
     }
 };
 
+export const updatePassword = async (currentPassword: string, newPassword: string): Promise<{ success: boolean; error?: string }> => {
+    try {
+        const user = await getCurrentUser();
+        if (!user) return { success: false, error: 'Utilisateur introuvable' };
+
+        if (user.password !== currentPassword) {
+            return { success: false, error: 'Mot de passe actuel incorrect' };
+        }
+
+        const res = await fetch(`${API_BASE_URL}/users/${user.id}`, {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ password: newPassword }),
+        });
+
+        if (!res.ok) {
+            return { success: false, error: 'Erreur serveur' };
+        }
+
+        // Update local storage
+        user.password = newPassword;
+        await AsyncStorage.setItem('user', JSON.stringify(user));
+
+        return { success: true };
+    } catch (err) {
+        console.error(err);
+        return { success: false, error: 'Erreur réseau' };
+    }
+};
+
 export const logout = async () => {
     await AsyncStorage.removeItem('user');
 };
