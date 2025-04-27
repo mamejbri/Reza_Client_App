@@ -7,34 +7,10 @@
       "password": "0000",
       "reservations": [
         {
-          "id": "res_001",
+          "id": "res_1745750709032",
           "place_id": "place_001",
-          "date": "2025-04-23",
-          "time": "19:30",
-          "people": 4,
-          "status": "confirmed"
-        },
-        {
-          "id": "res_1745152787632",
-          "place_id": "place_002",
-          "date": "2025-04-21",
-          "time": "10:00",
-          "status": "pending",
-          "program_id": "prog_003"
-        },
-        {
-          "id": "res_1745153182437",
-          "place_id": "place_003",
-          "date": "2025-04-21",
-          "time": "10:00",
-          "status": "pending",
-          "people": 4
-        },
-        {
-          "id": "res_1745166252232",
-          "place_id": "place_005",
-          "date": "2025-04-21",
-          "time": "13:00",
+          "date": "2025-04-30",
+          "time": "21:00",
           "status": "pending",
           "people": 2
         }
@@ -100,138 +76,12 @@
         }
       ],
       "available_slots": {
-        "2025-04-20": [
-          {
-            "time": "12:00",
-            "reserved_by": null
-          },
-          {
-            "time": "13:00",
-            "reserved_by": null
-          },
-          {
-            "time": "14:00",
-            "reserved_by": null
-          },
-          {
-            "time": "18:00",
-            "reserved_by": null
-          },
-          {
-            "time": "19:30",
-            "reserved_by": null
-          },
-          {
-            "time": "21:00",
-            "reserved_by": "1"
-          }
-        ],
-        "2025-04-21": [
-          {
-            "time": "12:00",
-            "reserved_by": null
-          },
-          {
-            "time": "13:00",
-            "reserved_by": null
-          },
-          {
-            "time": "14:00",
-            "reserved_by": null
-          },
-          {
-            "time": "18:00",
-            "reserved_by": null
-          },
-          {
-            "time": "19:30",
-            "reserved_by": null
-          },
-          {
-            "time": "21:00",
-            "reserved_by": null
-          }
-        ],
-        "2025-04-22": [
-          {
-            "time": "12:00",
-            "reserved_by": null
-          },
-          {
-            "time": "13:00",
-            "reserved_by": null
-          },
-          {
-            "time": "14:00",
-            "reserved_by": null
-          },
-          {
-            "time": "18:00",
-            "reserved_by": null
-          },
-          {
-            "time": "19:30",
-            "reserved_by": null
-          },
-          {
-            "time": "21:00",
-            "reserved_by": null
-          }
-        ],
-        "2025-04-23": [
-          {
-            "time": "12:00",
-            "reserved_by": null
-          },
-          {
-            "time": "13:00",
-            "reserved_by": null
-          },
-          {
-            "time": "14:00",
-            "reserved_by": null
-          },
-          {
-            "time": "18:00",
-            "reserved_by": null
-          },
-          {
-            "time": "19:30",
-            "reserved_by": "1"
-          },
-          {
-            "time": "21:00",
-            "reserved_by": null
-          }
-        ],
-        "2025-04-24": [
-          {
-            "time": "12:00",
-            "reserved_by": null
-          },
-          {
-            "time": "13:00",
-            "reserved_by": null
-          },
-          {
-            "time": "14:00",
-            "reserved_by": null
-          },
-          {
-            "time": "18:00",
-            "reserved_by": null
-          },
-          {
-            "time": "19:30",
-            "reserved_by": null
-          },
-          {
-            "time": "21:00",
-            "reserved_by": null
-          }
-        ],
         "2025-04-25": [
           {
+            "time": "11:00",
+            "reserved_by": null
+          },
+          {
             "time": "12:00",
             "reserved_by": null
           },
@@ -254,6 +104,156 @@
           {
             "time": "21:00",
             "reserved_by": null
+          }
+        ],
+        "2025-04-26": [
+          {
+            "time": "11:00",
+            "reserved_by": null
+          },
+          {
+            "time": "12:00",
+            "reserved_by": null
+          },
+          {
+            "time": "13:00",
+            "reserved_by": null
+          },
+          {
+            "time": "14:00",
+            "reserved_by": null
+          },
+          {
+            "time": "18:00",
+            "reserved_by": null
+          },
+          {
+            "time": "19:30",
+            "reserved_by": null
+          },
+          {
+            "time": "21:00",
+            "reserved_by": null
+          }
+        ],
+        "2025-04-27": [
+          {
+            "time": "11:00",
+            "reserved_by": null
+          },
+          {
+            "time": "12:00",
+            "reserved_by": null
+          },
+          {
+            "time": "13:00",
+            "reserved_by": null
+          },
+          {
+            "time": "14:00",
+            "reserved_by": null
+          },
+          {
+            "time": "18:00",
+            "reserved_by": null
+          },
+          {
+            "time": "19:30",
+            "reserved_by": null
+          },
+          {
+            "time": "21:00",
+            "reserved_by": null
+          }
+        ],
+        "2025-04-28": [
+          {
+            "time": "11:00",
+            "reserved_by": null
+          },
+          {
+            "time": "12:00",
+            "reserved_by": null
+          },
+          {
+            "time": "13:00",
+            "reserved_by": null
+          },
+          {
+            "time": "14:00",
+            "reserved_by": null
+          },
+          {
+            "time": "18:00",
+            "reserved_by": null
+          },
+          {
+            "time": "19:30",
+            "reserved_by": null
+          },
+          {
+            "time": "21:00",
+            "reserved_by": null
+          }
+        ],
+        "2025-04-29": [
+          {
+            "time": "11:00",
+            "reserved_by": null
+          },
+          {
+            "time": "12:00",
+            "reserved_by": null
+          },
+          {
+            "time": "13:00",
+            "reserved_by": null
+          },
+          {
+            "time": "14:00",
+            "reserved_by": null
+          },
+          {
+            "time": "18:00",
+            "reserved_by": null
+          },
+          {
+            "time": "19:30",
+            "reserved_by": null
+          },
+          {
+            "time": "21:00",
+            "reserved_by": null
+          }
+        ],
+        "2025-04-30": [
+          {
+            "time": "11:00",
+            "reserved_by": null
+          },
+          {
+            "time": "12:00",
+            "reserved_by": null
+          },
+          {
+            "time": "13:00",
+            "reserved_by": null
+          },
+          {
+            "time": "14:00",
+            "reserved_by": null
+          },
+          {
+            "time": "18:00",
+            "reserved_by": null
+          },
+          {
+            "time": "19:30",
+            "reserved_by": null
+          },
+          {
+            "time": "21:00",
+            "reserved_by": "1"
           }
         ]
       }
@@ -278,10 +278,10 @@
       ],
       "reviews": [],
       "available_slots": {
-        "2025-04-21": [
+        "2025-04-30": [
           {
             "time": "10:00",
-            "reserved_by": "1"
+            "reserved_by": null
           },
           {
             "time": "11:00",
@@ -333,14 +333,14 @@
       ],
       "reviews": [],
       "available_slots": {
-        "2025-04-21": [
+        "2025-04-30": [
           {
             "time": "09:00",
             "reserved_by": null
           },
           {
             "time": "10:00",
-            "reserved_by": "1"
+            "reserved_by": null
           }
         ]
       }
@@ -366,7 +366,11 @@
       ],
       "reviews": [],
       "available_slots": {
-        "2025-04-21": [
+        "2025-04-28": [
+          {
+            "time": "11:00",
+            "reserved_by": null
+          },
           {
             "time": "12:00",
             "reserved_by": null
@@ -392,7 +396,11 @@
             "reserved_by": null
           }
         ],
-        "2025-04-22": [
+        "2025-04-29": [
+          {
+            "time": "11:00",
+            "reserved_by": null
+          },
           {
             "time": "12:00",
             "reserved_by": null
@@ -418,7 +426,11 @@
             "reserved_by": null
           }
         ],
-        "2025-04-23": [
+        "2025-04-30": [
+          {
+            "time": "11:00",
+            "reserved_by": null
+          },
           {
             "time": "12:00",
             "reserved_by": null
@@ -444,7 +456,11 @@
             "reserved_by": null
           }
         ],
-        "2025-04-24": [
+        "2025-05-01": [
+          {
+            "time": "11:00",
+            "reserved_by": null
+          },
           {
             "time": "12:00",
             "reserved_by": null
@@ -470,33 +486,11 @@
             "reserved_by": null
           }
         ],
-        "2025-04-25": [
+        "2025-05-02": [
           {
-            "time": "12:00",
+            "time": "11:00",
             "reserved_by": null
           },
-          {
-            "time": "13:00",
-            "reserved_by": null
-          },
-          {
-            "time": "14:00",
-            "reserved_by": null
-          },
-          {
-            "time": "18:00",
-            "reserved_by": null
-          },
-          {
-            "time": "19:30",
-            "reserved_by": null
-          },
-          {
-            "time": "21:00",
-            "reserved_by": null
-          }
-        ],
-        "2025-04-26": [
           {
             "time": "12:00",
             "reserved_by": null
@@ -545,111 +539,11 @@
       ],
       "reviews": [],
       "available_slots": {
-        "2025-04-21": [
-          {
-            "time": "12:00",
-            "reserved_by": null
-          },
-          {
-            "time": "13:00",
-            "reserved_by": "1"
-          },
-          {
-            "time": "14:00",
-            "reserved_by": null
-          },
-          {
-            "time": "18:00",
-            "reserved_by": null
-          },
-          {
-            "time": "19:30",
-            "reserved_by": null
-          },
-          {
-            "time": "21:00",
-            "reserved_by": null
-          }
-        ],
-        "2025-04-22": [
-          {
-            "time": "12:00",
-            "reserved_by": null
-          },
-          {
-            "time": "13:00",
-            "reserved_by": null
-          },
-          {
-            "time": "14:00",
-            "reserved_by": null
-          },
-          {
-            "time": "18:00",
-            "reserved_by": null
-          },
-          {
-            "time": "19:30",
-            "reserved_by": null
-          },
-          {
-            "time": "21:00",
-            "reserved_by": null
-          }
-        ],
-        "2025-04-23": [
-          {
-            "time": "12:00",
-            "reserved_by": null
-          },
-          {
-            "time": "13:00",
-            "reserved_by": null
-          },
-          {
-            "time": "14:00",
-            "reserved_by": null
-          },
-          {
-            "time": "18:00",
-            "reserved_by": null
-          },
-          {
-            "time": "19:30",
-            "reserved_by": null
-          },
-          {
-            "time": "21:00",
-            "reserved_by": null
-          }
-        ],
-        "2025-04-24": [
-          {
-            "time": "12:00",
-            "reserved_by": null
-          },
-          {
-            "time": "13:00",
-            "reserved_by": null
-          },
-          {
-            "time": "14:00",
-            "reserved_by": null
-          },
-          {
-            "time": "18:00",
-            "reserved_by": null
-          },
-          {
-            "time": "19:30",
-            "reserved_by": null
-          },
-          {
-            "time": "21:00",
-            "reserved_by": null
-          }
-        ],
         "2025-04-25": [
+          {
+            "time": "11:00",
+            "reserved_by": null
+          },
           {
             "time": "12:00",
             "reserved_by": null
@@ -676,6 +570,130 @@
           }
         ],
         "2025-04-26": [
+          {
+            "time": "11:00",
+            "reserved_by": null
+          },
+          {
+            "time": "12:00",
+            "reserved_by": null
+          },
+          {
+            "time": "13:00",
+            "reserved_by": null
+          },
+          {
+            "time": "14:00",
+            "reserved_by": null
+          },
+          {
+            "time": "18:00",
+            "reserved_by": null
+          },
+          {
+            "time": "19:30",
+            "reserved_by": null
+          },
+          {
+            "time": "21:00",
+            "reserved_by": null
+          }
+        ],
+        "2025-04-27": [
+          {
+            "time": "11:00",
+            "reserved_by": null
+          },
+          {
+            "time": "12:00",
+            "reserved_by": null
+          },
+          {
+            "time": "13:00",
+            "reserved_by": null
+          },
+          {
+            "time": "14:00",
+            "reserved_by": null
+          },
+          {
+            "time": "18:00",
+            "reserved_by": null
+          },
+          {
+            "time": "19:30",
+            "reserved_by": null
+          },
+          {
+            "time": "21:00",
+            "reserved_by": null
+          }
+        ],
+        "2025-04-28": [
+          {
+            "time": "11:00",
+            "reserved_by": null
+          },
+          {
+            "time": "12:00",
+            "reserved_by": null
+          },
+          {
+            "time": "13:00",
+            "reserved_by": null
+          },
+          {
+            "time": "14:00",
+            "reserved_by": null
+          },
+          {
+            "time": "18:00",
+            "reserved_by": null
+          },
+          {
+            "time": "19:30",
+            "reserved_by": null
+          },
+          {
+            "time": "21:00",
+            "reserved_by": null
+          }
+        ],
+        "2025-04-29": [
+          {
+            "time": "11:00",
+            "reserved_by": null
+          },
+          {
+            "time": "12:00",
+            "reserved_by": null
+          },
+          {
+            "time": "13:00",
+            "reserved_by": null
+          },
+          {
+            "time": "14:00",
+            "reserved_by": null
+          },
+          {
+            "time": "18:00",
+            "reserved_by": null
+          },
+          {
+            "time": "19:30",
+            "reserved_by": null
+          },
+          {
+            "time": "21:00",
+            "reserved_by": null
+          }
+        ],
+        "2025-04-30": [
+          {
+            "time": "11:00",
+            "reserved_by": null
+          },
           {
             "time": "12:00",
             "reserved_by": null

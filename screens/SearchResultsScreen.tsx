@@ -206,9 +206,24 @@ const SearchResultsScreen: React.FC = () => {
                                         {selectedDate && item.available_slots?.[selectedDate] && (
                                             <View className="gap-2">
                                                 {(['Midi', 'Soir'] as const).map((momentKey) => {
-                                                    const availableSlots = item.available_slots[selectedDate]
+                                                    let availableSlots = item.available_slots[selectedDate]
                                                         .filter((slot: any) => slot.reserved_by === null)
                                                         .map((slot: any) => slot.time);
+
+                                                    const now = new Date();
+                                                    const selected = new Date(selectedDate);
+                                                    const isToday = selected.toDateString() === now.toDateString();
+
+                                                    if (isToday) {
+                                                        const currentHour = now.getHours();
+                                                        const currentMinute = now.getMinutes();
+                                                        availableSlots = availableSlots.filter((slot: string) => {
+                                                            const [slotHour, slotMinute] = slot.split(':').map(Number);
+                                                            if (slotHour > currentHour) return true;
+                                                            if (slotHour === currentHour && slotMinute > currentMinute) return true;
+                                                            return false;
+                                                        });
+                                                    }
 
                                                     const slotsForMoment = availableSlots.filter(s =>
                                                         momentKey === 'Midi'

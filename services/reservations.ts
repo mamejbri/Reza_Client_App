@@ -1,4 +1,3 @@
-// services/reservations.ts
 import { API_BASE_URL } from '@env';
 import { getCurrentUser } from './auth';
 

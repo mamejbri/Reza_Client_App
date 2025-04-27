@@ -1,8 +1,9 @@
 import React, { useState, useMemo } from 'react';
 import { View, Text, TouchableOpacity, ScrollView } from 'react-native';
-import 'dayjs/locale/fr';
 import { toISO, isoToFrDisplay } from '../utils/date';
 import CustomCalendarModal from './CustomCalendarModal';
+import dayjs from 'dayjs';
+import 'dayjs/locale/fr';
 
 interface Program {
     id: string;
@@ -56,8 +57,50 @@ const EditReservationForm: React.FC<Props> = ({
     const fullSlotList = useMemo(() => {
         const list = freeSlots.slice();
         if (initialTime && !list.includes(initialTime)) list.push(initialTime);
+
+        const now = dayjs();
+        const isToday = dayjs(dateISO).isSame(now, 'day');
+
+        if (isToday) {
+            const currentHour = now.hour();
+            const currentMinute = now.minute();
+            return list.filter((slot) => {
+                const [slotHour, slotMinute] = slot.split(':').map(Number);
+                if (slotHour > currentHour) return true;
+                if (slotHour === currentHour && slotMinute > currentMinute) return true;
+                return false;
+            });
+        }
+
         return list;
-    }, [freeSlots, initialTime]);
+    }, [freeSlots, initialTime, dateISO]);
+
+    const disabledDates = useMemo(() => {
+        const RANGE = 365;
+        const today = dayjs().startOf('day');
+        const now = dayjs();
+        const out: string[] = [];
+
+        for (let i = 0; i < RANGE; i++) {
+            const d = today.add(i, 'day');
+            const key = d.format('YYYY-MM-DD');
+            const slotsArr = availableSlots?.[key] ?? [];
+
+            const hasFreeUpcomingSlot = slotsArr.some(({ time, reserved_by }) => {
+                if (reserved_by !== null) return false;
+                if (!d.isSame(today, 'day')) return true;
+                const [h, m] = time.split(':').map(Number);
+                return h > now.hour() || (h === now.hour() && m > now.minute());
+            });
+
+            if (!hasFreeUpcomingSlot) out.push(key);
+        }
+
+        return out;
+    }, [availableSlots]);
+
+
+
 
     const formattedDate = isoToFrDisplay(dateISO);
 
@@ -190,8 +233,7 @@ const EditReservationForm: React.FC<Props> = ({
                     setIsSaving(false);
                 }}
                 disabled={isSaving || !time || (isProgramBased && !selectedProgramId)}
-                className={`btn-primary mt-6 mb-4 ${isSaving || !time || (isProgramBased && !selectedProgramId) ? 'opacity-50' : ''}`}
-            >
+                className={`btn-primary mt-6 mb-4 ${isSaving || !time || (isProgramBased && !selectedProgramId) ? 'opacity-50' : ''}`} >
                 <Text className="btn-primary-text">{isSaving ? 'Chargement...' : 'Je confirme ma REZA'}</Text>
             </TouchableOpacity>
 
@@ -203,11 +245,10 @@ const EditReservationForm: React.FC<Props> = ({
                     const iso = toISO(frString);
                     if (!iso) return;
                     setDateISO(iso);
+                    setTime('');
                 }}
                 selectedDate={dateISO}
-                disabledDates={Object.entries(availableSlots)
-                    .filter(([, slots]) => slots.every(s => s.reserved_by))
-                    .map(([d]) => d)}
+                disabledDates={disabledDates}
             />
         </View>
     );

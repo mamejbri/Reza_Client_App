@@ -1,12 +1,13 @@
-import React from 'react';
+import React, { useMemo, useState } from 'react';
 import { View, Text, TouchableOpacity } from 'react-native';
 import Modal from 'react-native-modal';
 import { Calendar } from 'react-native-calendars';
+import dayjs from 'dayjs';
 
 interface Props {
     visible: boolean;
     onClose: () => void;
-    onSelectDate: (formattedDate: string) => void;
+    onSelectDate: (isoDate: string) => void;
     selectedDate?: string;
     disabledDates?: string[];
 }
@@ -18,7 +19,49 @@ const CustomCalendarModal: React.FC<Props> = ({
     selectedDate,
     disabledDates = [],
 }) => {
-    const todayStr = new Date().toISOString().split('T')[0];
+    const todayStr = dayjs().format('YYYY-MM-DD');
+
+    const disabledMap = useMemo(() => {
+        return disabledDates.reduce((acc, d) => {
+            acc[d] = { disabled: true, disableTouchEvent: true };
+            return acc;
+        }, {} as Record<string, { disabled: true; disableTouchEvent: true }>);
+    }, [disabledDates]);
+
+    const enabledMonths = useMemo(() => {
+        const set = new Set<string>();
+        const range = 365;
+        const today = dayjs().startOf('day');
+
+        for (let i = 0; i < range; i++) {
+            const d = today.add(i, 'day');
+            const key = d.format('YYYY-MM-DD');
+            if (!disabledMap[key]) set.add(d.format('YYYY-MM'));
+        }
+        return set;
+    }, [disabledMap]);
+
+    const [currentMonth, setCurrentMonth] = useState(
+        dayjs(selectedDate ?? todayStr).format('YYYY-MM'),
+    );
+    const curMonthDayjs = dayjs(currentMonth + '-01');
+
+    const monthKey = (d: dayjs.Dayjs) => d.format('YYYY-MM');
+    const disableLeft = !enabledMonths.has(monthKey(curMonthDayjs.subtract(1, 'month')));
+    const disableRight = !enabledMonths.has(monthKey(curMonthDayjs.add(1, 'month')));
+
+    const markedDates = useMemo(() => ({
+        ...disabledMap,
+        ...(selectedDate
+            ? {
+                [selectedDate]: {
+                    selected: true,
+                    selectedColor: '#000',
+                    selectedTextColor: '#fff',
+                },
+            }
+            : {}),
+    }), [disabledMap, selectedDate]);
 
     return (
         <Modal
@@ -43,30 +86,59 @@ const CustomCalendarModal: React.FC<Props> = ({
                 <Calendar
                     firstDay={1}
                     enableSwipeMonths
-                    hideExtraDays={true}
+                    hideExtraDays
                     monthFormat="MMMM yyyy"
-                    dayComponent={({ date }) => {
-                        const dayStr = date.dateString;
-                        const isDisabled =
-                            disabledDates.includes(dayStr) || new Date(dayStr) < new Date(todayStr);
-                        const isToday = dayStr === todayStr;
-                        const isSelected = dayStr === selectedDate;
 
-                        let backgroundColor = '#C53334';
-                        let textColor = '#fff';
+                    disableAllTouchEventsForDisabledDays
+                    markedDates={markedDates}
 
-                        if (isDisabled) {
-                            backgroundColor = '#D9D9D9';
-                            textColor = '#fff';
-                        } else if (isSelected) {
-                            backgroundColor = '#000';
-                            textColor = '#fff';
-                        } else if (isToday) {
-                            backgroundColor = '#F7F7F7';
-                            textColor = '#C53334';
+                    disableArrowLeft={disableLeft}
+                    disableArrowRight={disableRight}
+                    onPressArrowLeft={subtractMonth => {
+                        if (disableLeft) return;
+                        subtractMonth();
+                        setCurrentMonth(monthKey(curMonthDayjs.subtract(1, 'month')));
+                    }}
+                    onPressArrowRight={addMonth => {
+                        if (disableRight) return;
+                        addMonth();
+                        setCurrentMonth(monthKey(curMonthDayjs.add(1, 'month')));
+                    }}
+
+                    onMonthChange={d => {
+                        setCurrentMonth(dayjs(d.dateString).format('YYYY-MM'));
+                    }}
+
+                    renderArrow={(direction) => {
+                        const isDisabled = (direction === 'left' && disableLeft) || (direction === 'right' && disableRight);
+
+                        return (
+                            <View
+                                className={`w-[32px] h-[32px] rounded-full justify-center items-center ${isDisabled ? 'bg-[#F0F0F0]' : 'bg-[#F7F7F7]'}`}>
+                                <Text
+                                    className={`${isDisabled ? 'text-[#D9D9D9]' : 'text-black'} text-[16px] font-bold`}>
+                                    {direction === 'left' ? '<' : '>'}
+                                </Text>
+                            </View>
+                        );
+                    }}
+
+                    dayComponent={({ date, state }) => {
+                        if (state === 'disabled') {
+                            return <View style={{ width: 32, height: 32, margin: 6 }} />;
                         }
 
-                        const handlePress = () => {
+                        const dayStr = date.dateString;
+                        const isDisabled = !!disabledMap[dayStr] || dayjs(dayStr).isBefore(todayStr, 'day');
+                        const isSelected = dayStr === selectedDate;
+                        const isToday = dayStr === todayStr;
+
+                        let bg = '#C53334', txt = '#fff';
+                        if (isDisabled) { bg = '#D9D9D9'; txt = '#fff'; }
+                        else if (isSelected) { bg = '#000'; txt = '#fff'; }
+                        else if (isToday) { bg = '#F7F7F7'; txt = '#C53334'; }
+
+                        const pick = () => {
                             if (isDisabled) return;
                             onSelectDate(dayStr);
                             onClose();
@@ -75,18 +147,18 @@ const CustomCalendarModal: React.FC<Props> = ({
                         return (
                             <TouchableOpacity
                                 disabled={isDisabled}
-                                onPress={handlePress}
+                                onPress={pick}
                                 style={{
                                     width: 32,
                                     height: 32,
                                     borderRadius: 16,
-                                    backgroundColor,
+                                    backgroundColor: bg,
                                     alignItems: 'center',
                                     justifyContent: 'center',
                                     marginHorizontal: 6,
                                     marginVertical: 6,
-                                }} >
-                                <Text style={{ color: textColor, fontSize: 16, fontWeight: '400' }}>
+                                }}>
+                                <Text style={{ color: txt, fontSize: 16, fontWeight: '400' }}>
                                     {date.day}
                                 </Text>
                             </TouchableOpacity>
