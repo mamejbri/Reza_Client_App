@@ -19,19 +19,18 @@ interface Props {
 const ReservationSummary: React.FC<Props> = ({ people, program, date, time, moment }) => {
     return (
         <View className="gap-4 mt-4">
-            {/* People or Program */}
-            {program ? (
+            {program && (
                 <View className="flex-column">
                     <Text className="text-lg font-semibold pl-3">Je réserve</Text>
                     <View className="rounded-2xl overflow-hidden bg-gray-100 shadow py-5 px-4 gap-4">
                         <Text className="text-lg font-bold">{program.title}</Text>
                         <Text className="text-lg font-medium">{program.description}</Text>
-                        <Text className="text-lg">
-                            {program.price} dh · {program.duration_minutes} min
-                        </Text>
+                        <Text className="text-lg">{program.price} dh · {program.duration_minutes} min</Text>
                     </View>
                 </View>
-            ) : (
+            )}
+
+            {typeof people === 'number' && (
                 <View className="flex-column">
                     <Text className="text-lg font-semibold pl-3">J'ai réservé pour</Text>
                     <View className="rounded-2xl overflow-hidden bg-gray-100 shadow">
@@ -47,7 +46,6 @@ const ReservationSummary: React.FC<Props> = ({ people, program, date, time, mome
                 </View>
             )}
 
-            {/* Date */}
             <View className="flex-column">
                 <Text className="text-lg font-semibold pl-3">Pour le</Text>
                 <View className="rounded-2xl overflow-hidden bg-gray-100 shadow">
@@ -59,7 +57,6 @@ const ReservationSummary: React.FC<Props> = ({ people, program, date, time, mome
                 </View>
             </View>
 
-            {/* Time */}
             <View className="flex-column">
                 <Text className="text-lg font-semibold pl-3">À</Text>
                 <View className="rounded-2xl overflow-hidden bg-gray-100 shadow">

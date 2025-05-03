@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { View, Text, ScrollView, TouchableOpacity, Image, Platform, Linking, Alert } from 'react-native';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -11,6 +11,7 @@ import AboutSection from '../components/AboutSection';
 import IcoMoonIcon from '../src/icons/IcoMoonIcon';
 import { isoToFrDisplay } from '../utils/date';
 import { updateReservation, cancelReservation, addReservation } from '../services/reservations';
+import { fetchGlobalMoyens } from '../services/moyens';
 import RNCalendarEvents from 'react-native-calendar-events';
 import dayjs from 'dayjs';
 
@@ -27,6 +28,21 @@ const ReservationDetailScreen = () => {
     const [dateISO, setDateISO] = useState(reservation.date);
     const [time, setTime] = useState(reservation.time);
     const [showCancelModal, setShowCancelModal] = useState(false);
+    const [globalMoyens, setGlobalMoyens] = useState([]);
+
+    const placeMoyens = reservation.place.moyens ?? [];
+
+    useEffect(() => {
+        const loadMoyens = async () => {
+            try {
+                const data = await fetchGlobalMoyens();
+                setGlobalMoyens(data);
+            } catch (err) {
+                console.warn('Failed to fetch global moyens:', err);
+            }
+        };
+        loadMoyens();
+    }, []);
 
     const moment = Number(time.split(':')[0]) < 18 ? 'Midi' : 'Soir';
 
@@ -48,23 +64,17 @@ const ReservationDetailScreen = () => {
 
     const addToCalendar = async () => {
         try {
-            // Request permission to access calendar
             const permission = await RNCalendarEvents.requestPermissions();
             if (permission !== 'authorized') {
-                Alert.alert(
-                    'Permission refusée',
-                    "L'accès au calendrier est nécessaire pour ajouter l'événement."
-                );
+                Alert.alert('Permission refusée', "L'accès au calendrier est nécessaire pour ajouter l'événement.");
                 return;
             }
 
-            // Build start and end date in ISO format
             const startDate = dayjs(`${dateISO}T${time}`).toISOString();
             const endDate = reservation.program?.duration_minutes
                 ? dayjs(startDate).add(reservation.program.duration_minutes, 'minutes').toISOString()
                 : dayjs(startDate).add(40, 'minutes').toISOString();
 
-            // Attempt to save the event to the default calendar
             const eventId = await RNCalendarEvents.saveEvent(
                 `Réservation chez ${reservation.place.name}`,
                 {
@@ -81,23 +91,21 @@ const ReservationDetailScreen = () => {
             if (eventId) {
                 Alert.alert('Ajouté au calendrier', "Votre réservation a été ajoutée avec succès.");
             } else {
-                Alert.alert('Erreur', "L'événement n'a pas pu être ajouté.");
+                Alert.alert("Erreur", "L'événement n'a pas pu être ajouté.");
             }
         } catch (error) {
             console.error('Erreur lors de l’ajout au calendrier:', error);
-            Alert.alert('Erreur', "Une erreur s'est produite lors de l'ajout à votre calendrier.");
+            Alert.alert("Erreur", "Une erreur s'est produite lors de l'ajout à votre calendrier.");
         }
     };
-
 
     const openInMaps = () => {
         const coords = `${reservation.place.location.lat},${reservation.place.location.lng}`;
         const label = encodeURIComponent(reservation.place.name);
         const scheme = Platform.select({ ios: 'maps:', android: 'geo:' });
-        const url =
-            Platform.OS === 'ios'
-                ? `${scheme}//?q=${label}&ll=${coords}`
-                : `${scheme}0,0?q=${coords}(${label})`;
+        const url = Platform.OS === 'ios'
+            ? `${scheme}//?q=${label}&ll=${coords}`
+            : `${scheme}0,0?q=${coords}(${label})`;
         Linking.openURL(url);
     };
 
@@ -114,9 +122,7 @@ const ReservationDetailScreen = () => {
                     <Text className="text-lg font-bold">{reservation.place.name}</Text>
                     <View className="flex-row items-center gap-2">
                         <IcoMoonIcon name="location" size={24} color="#C53334" />
-                        <Text className="text-base font-medium">
-                            {reservation.place.address}
-                        </Text>
+                        <Text className="text-base font-medium">{reservation.place.address}</Text>
                     </View>
                     <View className="flex-row items-center gap-2">
                         <IcoMoonIcon name="star-solid" size={24} color="#C53334" />
@@ -147,7 +153,7 @@ const ReservationDetailScreen = () => {
                         </ScrollView>
 
                         <ReservationSummary
-                            people={reservation.program ? undefined : people}
+                            people={people}
                             program={reservation.program}
                             date={isoToFrDisplay(dateISO)}
                             time={time}
@@ -210,15 +216,35 @@ const ReservationDetailScreen = () => {
                         {/* Rendez-vous Tab */}
                         {activeEditTab === 'rendezvous' && (
                             <EditReservationForm
-                                key={`${people}-${dateISO}-${time}-${reservation.program_id || ''}`}
+                                key={reservation.id}
                                 initialPeople={people}
                                 initialDateISO={dateISO}
                                 initialTime={time}
                                 availableSlots={reservation.place.available_slots}
                                 programs={reservation.place.programs}
+                                moyens={placeMoyens}
+                                globalMoyens={globalMoyens}
                                 initialProgramId={reservation.program_id}
+                                initialMoyenId={
+                                    placeMoyens.find(m =>
+                                        m.programs.some(p => p.id === reservation.program_id)
+                                    )?.moyen_id ?? null
+                                }
                                 onConfirm={async (p, dISO, t, programId) => {
                                     let success = false;
+
+                                    const getProgramById = (programId: string | undefined) => {
+                                        if (!programId) return undefined;
+
+                                        // 1. Directly from top-level
+                                        const fromTopLevel = reservation.place.programs?.find(pr => pr.id === programId);
+                                        if (fromTopLevel) return fromTopLevel;
+
+                                        // 2. Search through moyens
+                                        return reservation.place.moyens
+                                            ?.flatMap(m => m.programs)
+                                            .find(pr => pr.id === programId);
+                                    };
 
                                     if (reservation.id === 'new') {
                                         const newRes = await addReservation(
@@ -237,9 +263,7 @@ const ReservationDetailScreen = () => {
                                             reservation.people = newRes.people;
                                             reservation.status = newRes.status;
                                             reservation.program_id = newRes.program_id;
-                                            reservation.program = programId
-                                                ? reservation.place.programs.find(pr => pr.id === programId)
-                                                : undefined;
+                                            reservation.program = getProgramById(programId);
                                         }
                                     } else {
                                         success = await updateReservation(
@@ -258,9 +282,7 @@ const ReservationDetailScreen = () => {
                                             reservation.time = t;
                                             reservation.people = p;
                                             reservation.program_id = programId ?? reservation.program_id;
-                                            reservation.program = programId
-                                                ? reservation.place.programs.find(pr => pr.id === programId)
-                                                : undefined;
+                                            reservation.program = getProgramById(programId);
                                         }
                                     }
 
@@ -275,6 +297,7 @@ const ReservationDetailScreen = () => {
                                 }}
                             />
                         )}
+
                         {/* Menu Tab */}
                         {activeEditTab === 'menu' && (
                             <View>

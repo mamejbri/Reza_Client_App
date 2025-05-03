@@ -17,6 +17,17 @@ type Place = {
     address: string;
     images: string[];
     programs?: any[];
+    moyens?: {
+        moyen_id: string;
+        programs: any[];
+    }[];
+};
+
+const findProgram = (place: Place, programId: string) => {
+    return (
+        place.programs?.find(p => p.id === programId) ||
+        place.moyens?.flatMap(m => m.programs).find(p => p.id === programId)
+    );
 };
 
 export const fetchUserReservations = async () => {
@@ -31,9 +42,7 @@ export const fetchUserReservations = async () => {
 
     return (fullUser.reservations || []).map((res: Reservation) => {
         const place = places.find((p: Place) => p.id === res.place_id);
-        const program = res.program_id
-            ? place?.programs?.find((p: any) => p.id === res.program_id)
-            : undefined;
+        const program = res.program_id ? findProgram(place, res.program_id) : undefined;
 
         return {
             ...res,
@@ -60,11 +69,9 @@ export const updateReservation = async (
         const user = await getCurrentUser();
         if (!user) return false;
 
-        // Fetch user
         const userRes = await fetch(`${API_BASE_URL}/users/${user.id}`);
         const userData = await userRes.json();
 
-        // Update reservation in user
         const updatedReservations = (userData.reservations || []).map((res: Reservation) =>
             res.id === reservationId
                 ? {
@@ -83,25 +90,26 @@ export const updateReservation = async (
             body: JSON.stringify({ reservations: updatedReservations }),
         });
 
-        // Fetch place
         const placeRes = await fetch(`${API_BASE_URL}/places/${placeId}`);
         const place = await placeRes.json();
 
         if (newProgramId) {
-            // Program-based reservation
-            const programs = place.programs || [];
+            const allPrograms = [
+                ...(place.programs || []),
+                ...place.moyens?.flatMap(m => m.programs) || []
+            ];
 
-            const oldProgram = programs.find((p: any) => p.id === (newProgramId ?? res.program_id));
-            const newProgram = programs.find((p: any) => p.id === newProgramId);
+            const oldProgram = allPrograms.find(p => p.id === newProgramId);
+            const newProgram = allPrograms.find(p => p.id === newProgramId);
 
             if (oldProgram?.available_slots?.[oldDate]) {
-                oldProgram.available_slots[oldDate] = oldProgram.available_slots[oldDate].map((s: any) =>
+                oldProgram.available_slots[oldDate] = oldProgram.available_slots[oldDate].map(s =>
                     s.time === oldTime && s.reserved_by === user.id ? { ...s, reserved_by: null } : s
                 );
             }
 
             if (newProgram?.available_slots?.[newDate]) {
-                newProgram.available_slots[newDate] = newProgram.available_slots[newDate].map((s: any) =>
+                newProgram.available_slots[newDate] = newProgram.available_slots[newDate].map(s =>
                     s.time === newTime && s.reserved_by === null ? { ...s, reserved_by: user.id } : s
                 );
             }
@@ -109,20 +117,19 @@ export const updateReservation = async (
             await fetch(`${API_BASE_URL}/places/${placeId}`, {
                 method: 'PATCH',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ programs }),
+                body: JSON.stringify({ programs: place.programs, moyens: place.moyens }),
             });
         } else {
-            // Non-program reservation (e.g. restaurant)
             const updatedSlots = { ...place.available_slots };
 
             if (updatedSlots[oldDate]) {
-                updatedSlots[oldDate] = updatedSlots[oldDate].map((s: any) =>
+                updatedSlots[oldDate] = updatedSlots[oldDate].map(s =>
                     s.time === oldTime && s.reserved_by === user.id ? { ...s, reserved_by: null } : s
                 );
             }
 
             if (updatedSlots[newDate]) {
-                updatedSlots[newDate] = updatedSlots[newDate].map((s: any) =>
+                updatedSlots[newDate] = updatedSlots[newDate].map(s =>
                     s.time === newTime && s.reserved_by === null ? { ...s, reserved_by: user.id } : s
                 );
             }
@@ -169,11 +176,15 @@ export const cancelReservation = async (
         const place = await placeRes.json();
 
         if (programId) {
-            const programs = place.programs || [];
-            const program = programs.find((p: any) => p.id === programId);
+            const allPrograms = [
+                ...(place.programs || []),
+                ...place.moyens?.flatMap(m => m.programs) || []
+            ];
+
+            const program = allPrograms.find(p => p.id === programId);
 
             if (program?.available_slots?.[date]) {
-                program.available_slots[date] = program.available_slots[date].map((s: any) =>
+                program.available_slots[date] = program.available_slots[date].map(s =>
                     s.time === time && s.reserved_by === user.id ? { ...s, reserved_by: null } : s
                 );
             }
@@ -181,13 +192,13 @@ export const cancelReservation = async (
             await fetch(`${API_BASE_URL}/places/${placeId}`, {
                 method: 'PATCH',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ programs }),
+                body: JSON.stringify({ programs: place.programs, moyens: place.moyens }),
             });
         } else {
             const updatedSlots = { ...place.available_slots };
 
             if (updatedSlots[date]) {
-                updatedSlots[date] = updatedSlots[date].map((s: any) =>
+                updatedSlots[date] = updatedSlots[date].map(s =>
                     s.time === time && s.reserved_by === user.id ? { ...s, reserved_by: null } : s
                 );
             }
@@ -248,11 +259,15 @@ export const addReservation = async (
         const place = await placeRes.json();
 
         if (programId) {
-            const programs = place.programs || [];
-            const program = programs.find((p: any) => p.id === programId);
+            const allPrograms = [
+                ...(place.programs || []),
+                ...place.moyens?.flatMap(m => m.programs) || []
+            ];
+
+            const program = allPrograms.find(p => p.id === programId);
 
             if (program?.available_slots?.[date]) {
-                program.available_slots[date] = program.available_slots[date].map((s: any) =>
+                program.available_slots[date] = program.available_slots[date].map(s =>
                     s.time === time && s.reserved_by === null ? { ...s, reserved_by: user.id } : s
                 );
             }
@@ -260,12 +275,12 @@ export const addReservation = async (
             await fetch(`${API_BASE_URL}/places/${placeId}`, {
                 method: 'PATCH',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ programs }),
+                body: JSON.stringify({ programs: place.programs, moyens: place.moyens }),
             });
         } else {
             const updatedSlots = { ...place.available_slots };
             if (updatedSlots[date]) {
-                updatedSlots[date] = updatedSlots[date].map((s: any) =>
+                updatedSlots[date] = updatedSlots[date].map(s =>
                     s.time === time && s.reserved_by === null ? { ...s, reserved_by: user.id } : s
                 );
             }
