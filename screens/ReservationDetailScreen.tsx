@@ -37,7 +37,8 @@ const ReservationDetailScreen = () => {
             reservation.id,
             reservation.place.id,
             reservation.date,
-            reservation.time
+            reservation.time,
+            reservation.program_id
         );
         if (success) {
             setShowCancelModal(false);

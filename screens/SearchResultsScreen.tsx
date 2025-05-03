@@ -67,8 +67,17 @@ const SearchResultsScreen: React.FC = () => {
 
         if (selectedDate) {
             filteredResults = filteredResults.filter((place) => {
-                const slots = place.available_slots?.[selectedDate];
-                return slots?.some((slot: any) => slot.reserved_by === null);
+                // Check top-level availability
+                const generalSlots = place.available_slots?.[selectedDate];
+                const generalHasFree = generalSlots?.some((slot: any) => slot.reserved_by === null);
+
+                // Or check per-program availability
+                const programs = place.programs ?? [];
+                const programHasFree = programs.some((program: any) =>
+                    program.available_slots?.[selectedDate]?.some((slot: any) => slot.reserved_by === null)
+                );
+
+                return generalHasFree || programHasFree;
             });
         }
 
@@ -203,13 +212,32 @@ const SearchResultsScreen: React.FC = () => {
                                         <Text className="text-base font-medium">Les prochaines disponibilités :</Text>
 
                                         {/* Available Time Slots */}
-                                        {selectedDate && item.available_slots?.[selectedDate] && (
+                                        {selectedDate && (
                                             <View className="gap-2">
                                                 {(['Midi', 'Soir'] as const).map((momentKey) => {
-                                                    let availableSlots = item.available_slots[selectedDate]
-                                                        .filter((slot: any) => slot.reserved_by === null)
-                                                        .map((slot: any) => slot.time);
+                                                    // Collect all available slots from both top-level and programs
+                                                    let allSlots: string[] = [];
 
+                                                    // Top-level slots (e.g., restaurants)
+                                                    const generalSlots = item.available_slots?.[selectedDate] || [];
+                                                    allSlots.push(
+                                                        ...generalSlots
+                                                            .filter((slot: any) => slot.reserved_by === null)
+                                                            .map((slot: any) => slot.time)
+                                                    );
+
+                                                    // Program-based slots (e.g., spa, yoga)
+                                                    const programs = item.programs ?? [];
+                                                    for (const program of programs) {
+                                                        const progSlots = program.available_slots?.[selectedDate] || [];
+                                                        allSlots.push(
+                                                            ...progSlots
+                                                                .filter((slot: any) => slot.reserved_by === null)
+                                                                .map((slot: any) => slot.time)
+                                                        );
+                                                    }
+
+                                                    // Filter based on "Midi" or "Soir"
                                                     const now = new Date();
                                                     const selected = new Date(selectedDate);
                                                     const isToday = selected.toDateString() === now.toDateString();
@@ -217,18 +245,14 @@ const SearchResultsScreen: React.FC = () => {
                                                     if (isToday) {
                                                         const currentHour = now.getHours();
                                                         const currentMinute = now.getMinutes();
-                                                        availableSlots = availableSlots.filter((slot: string) => {
+                                                        allSlots = allSlots.filter((slot: string) => {
                                                             const [slotHour, slotMinute] = slot.split(':').map(Number);
-                                                            if (slotHour > currentHour) return true;
-                                                            if (slotHour === currentHour && slotMinute > currentMinute) return true;
-                                                            return false;
+                                                            return slotHour > currentHour || (slotHour === currentHour && slotMinute > currentMinute);
                                                         });
                                                     }
 
-                                                    const slotsForMoment = availableSlots.filter(s =>
-                                                        momentKey === 'Midi'
-                                                            ? Number(s.split(':')[0]) < 18
-                                                            : Number(s.split(':')[0]) >= 18
+                                                    const slotsForMoment = allSlots.filter(s =>
+                                                        momentKey === 'Midi' ? Number(s.split(':')[0]) < 18 : Number(s.split(':')[0]) >= 18
                                                     );
 
                                                     if (slotsForMoment.length === 0) return null;
