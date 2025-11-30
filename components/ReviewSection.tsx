@@ -1,101 +1,172 @@
-import React, { useState } from 'react';
-import { View, Text, TouchableOpacity, Image, TextInput } from 'react-native';
+// components/ReviewSection.tsx
+import React from 'react';
+import { View, Text, ActivityIndicator, Image } from 'react-native';
 import IcoMoonIcon from '../src/icons/IcoMoonIcon';
 
-interface Review {
-    user_id: string;
-    rating: number;
-    comment: string;
-    date: string;
-}
+/** Raw review shape from API (flexible on client fields) */
+type RawReview = {
+  id: number;
+  rating: number;
+  contenu?: string | null;
+  createdDate?: string | null;
 
-interface Props {
-    reviews: Review[];
-}
+  // any of these may exist depending on your backend mapping:
+  clientName?: string | null;
+  clientLastName?: string | null;
+  clientFirstName?: string | null;
 
-const ReviewSection: React.FC<Props> = ({ reviews }) => {
-    const [userRating, setUserRating] = useState(4);
-    const [editingComment, setEditingComment] = useState(false);
-    const [userComment, setUserComment] = useState('');
+  firstName?: string | null;
+  lastName?: string | null;
+  prenom?: string | null;
+  nom?: string | null;
 
-    return (
-        <View className="mt-2 mb-6">
-            {/* User Review Input */}
-            <View className="bg-gray-100 rounded-2xl p-2.5 mb-9">
-                <View className="py-4">
-                    <View className="flex-row items-center mb-4">
-                        <Image
-                            source={require('../assets/images/avatar.png')}
-                            className="w-[54] h-[54] rounded-full"
-                        />
-                        <View className="flex-1 ml-5">
-                            <Text className="font-medium text-base mb-2">Moi</Text>
-                            <View className="flex-row gap-1">
-                                {[1, 2, 3, 4, 5].map((i) => (
-                                    <TouchableOpacity key={i} onPress={() => setUserRating(i)}>
-                                        <IcoMoonIcon
-                                            name="star-solid"
-                                            size={20}
-                                            color={i <= userRating ? '#e11d48' : '#d1d5db'}
-                                        />
-                                    </TouchableOpacity>
-                                ))}
-                            </View>
-                        </View>
-                    </View>
+  clientEmail?: string | null;
+  clientAvatarUrl?: string | null;
 
-                    {editingComment ? (
-                        <TextInput
-                            multiline
-                            value={userComment}
-                            onChangeText={setUserComment}
-                            className="border border-gray-300 rounded-lg p-2 h-24 text-gray-800"
-                            placeholder="Je rédige mon avis"
-                        />
-                    ) : (
-                        <TouchableOpacity className="flex-row items-center px-4" onPress={() => setEditingComment(true)}>
-                            <Text className="flex-grow">Je rédige mon avis</Text>
-                            <IcoMoonIcon name="pen" size={20} color="#000" />
-                        </TouchableOpacity>
-                    )}
-                </View>
+  client?: {
+    firstName?: string | null;
+    lastName?: string | null;
+    prenom?: string | null;
+    nom?: string | null;
+    email?: string | null;
+    avatarUrl?: string | null;
+    photoUrl?: string | null;
+  } | null;
+};
+
+type Props = {
+  loading?: boolean;
+  average?: number;
+  count?: number;
+  reviews?: RawReview[];
+};
+
+/** Normalize names/avatars from many possible backend field names */
+const getClientMeta = (r: RawReview) => {
+  const first =
+    r.clientFirstName ??
+    r.firstName ??
+    r.prenom ??
+    r.client?.firstName ??
+    r.client?.prenom ??
+    r.clientName ??
+    null;
+
+  const last =
+    r.clientLastName ??
+    r.lastName ??
+    r.nom ??
+    r.client?.lastName ??
+    r.client?.nom ??
+    null;
+
+  const email = r.clientEmail ?? r.client?.email ?? null;
+
+  const avatar =
+    r.clientAvatarUrl ??
+    r.client?.avatarUrl ??
+    r.client?.photoUrl ??
+    null;
+
+  const displayName =
+    [first, last].filter(Boolean).join(' ').trim() ||
+    first ||
+    last ||
+    (email ?? 'Utilisateur');
+
+  const initials = (first?.[0] ?? '') + (last?.[0] ?? '');
+  return { displayName, initials: initials.toUpperCase() || 'U', avatar };
+};
+
+const StarRow = ({ rating }: { rating: number }) => (
+  <View className="flex-row items-center">
+    {[1, 2, 3, 4, 5].map((i) => (
+      <IcoMoonIcon
+        key={i}
+        name={i <= (rating ?? 0) ? 'star-solid' : 'star'}
+        size={16}
+        color={i <= (rating ?? 0) ? '#C53334' : '#C9C9C9'} // red like your UI
+      />
+    ))}
+  </View>
+);
+
+/** Single review card styled like the mock */
+const ReviewCard: React.FC<{ r: RawReview }> = ({ r }) => {
+  const { displayName, initials, avatar } = getClientMeta(r);
+  const text = (r.contenu ?? '').trim();
+
+  return (
+    <View className="bg-[#F3F4F6] rounded-2xl p-3 mb-4">
+      {/* Header: avatar + name + stars */}
+      <View className="flex-row items-center justify-between mb-2">
+        <View className="flex-row items-center">
+          {avatar ? (
+            <Image
+              source={{ uri: avatar }}
+              style={{ width: 36, height: 36, borderRadius: 18, marginRight: 8 }}
+            />
+          ) : (
+            <View
+              style={{ width: 36, height: 36, borderRadius: 18 }}
+              className="bg-gray-300 mr-2 items-center justify-center"
+            >
+              <Text className="text-[12px] font-bold text-gray-700">{initials}</Text>
             </View>
-
-            {/* Reviews Count */}
-            <View className="flex-row align-center gap-2 mb-5">
-                <IcoMoonIcon name="star-solid" size={20} color="#e11d48" />
-                <Text className="font-semibold text-lg">{reviews.length} avis</Text>
-            </View>
-
-            {/* Display Existing Reviews */}
-            {reviews.map((item, index) => (
-                <View key={`${item.user_id}-${index}`} className="bg-gray-100 rounded-2xl p-2.5 mb-4">
-                    <View className="py-4">
-                        <View className="flex-row items-center mb-2.5">
-                            <Image
-                                source={require('../assets/images/avatar.png')}
-                                className="w-[54] h-[54] rounded-full"
-                            />
-                            <View className="ml-5">
-                                <Text className="font-medium text-base mb-2">Utilisateur {item.user_id}</Text>
-                                <View className="flex-row gap-1">
-                                    {[1, 2, 3, 4, 5].map((i) => (
-                                        <IcoMoonIcon
-                                            key={i}
-                                            name="star-solid"
-                                            size={20}
-                                            color={i <= item.rating ? '#e11d48' : '#d1d5db'}
-                                        />
-                                    ))}
-                                </View>
-                            </View>
-                        </View>
-                        <Text className="italic font-light">{item.comment}</Text>
-                    </View>
-                </View>
-            ))}
+          )}
+          <Text className="text-[15px] font-semibold">{displayName}</Text>
         </View>
+
+        {/* Stars (red) */}
+        <StarRow rating={r.rating ?? 0} />
+      </View>
+
+      {/* Quoted/italic content */}
+      {!!text && (
+        <View className="bg-white rounded-xl px-3 py-3">
+          <Text className="text-[14px] text-gray-800 italic">
+            “{text}”
+          </Text>
+        </View>
+      )}
+    </View>
+  );
+};
+
+const ReviewSection: React.FC<Props> = ({ loading, average, count, reviews }) => {
+  if (loading) {
+    return (
+      <View className="py-6 items-center">
+        <ActivityIndicator size="small" color="#C53334" />
+      </View>
     );
+  }
+
+  const items = Array.isArray(reviews) ? reviews : [];
+
+  return (
+    <View>
+      {/* Summary row */}
+      <View className="flex-row items-center gap-2 mb-3">
+        {typeof average === 'number' && typeof count === 'number' ? (
+          <>
+            <IcoMoonIcon name="star" size={20} color="#C53334" />
+            <Text className="text-base font-semibold">{average.toFixed(1)}</Text>
+            <Text className="text-base text-gray-600">• {count} avis</Text>
+          </>
+        ) : (
+          <Text className="text-base text-gray-600">Aucun avis</Text>
+        )}
+      </View>
+
+      {/* List */}
+      {items.length === 0 ? (
+        <Text className="text-sm text-gray-500">Pas encore d’avis.</Text>
+      ) : (
+        <View>{items.map((r) => <ReviewCard key={r.id} r={r} />)}</View>
+      )}
+    </View>
+  );
 };
 
 export default ReviewSection;

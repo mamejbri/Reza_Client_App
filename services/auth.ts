@@ -1,138 +1,167 @@
+// src/services/auth.ts
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { API_BASE_URL } from '@env';
+import { API } from '../src/config/env';
+import http from '../src/api/http';
 
-type User = {
-    id: number;
-    email: string;
-    phone: string;
-    password: string;
-    firstName?: string;
-    lastName?: string;
-    photo?: string;
-};
+type Ok = { success: true };
+type Fail = { success: false; message: string };
 
-export const signup = async (
-    phone: string,
-    email: string,
-    password: string
-): Promise<{ success: boolean; error?: string }> => {
-    try {
-        // Check if the email already exists
-        const res = await fetch(`${API_BASE_URL}/users?email=${email}`);
-        const users: User[] = await res.json();
+export type LoginResult =
+  | { success: true; token: string; clientId?: number }
+  | Fail;
 
-        if (users.length > 0) {
-            return { success: false, error: 'EMAIL_IN_USE' };
-        }
+export type SignupResult = Ok | Fail;
 
-        // Create new user
-        const createRes = await fetch(`${API_BASE_URL}/users`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ phone, email, password, firstName: '', lastName: '', photo: '' }),
-        });
+const TOKEN_KEY = 'token';
+const CLIENT_ID_KEY = 'clientId';
 
-        if (!createRes.ok) {
-            return { success: false, error: 'CREATE_FAILED' };
-        }
+// Small safe helpers
+export async function getToken(): Promise<string | null> {
+  try {
+    return await AsyncStorage.getItem(TOKEN_KEY);
+  } catch {
+    return null;
+  }
+}
 
-        const newUser = await createRes.json();
+export async function getStoredClientId(): Promise<number | null> {
+  try {
+    const v = await AsyncStorage.getItem(CLIENT_ID_KEY);
+    if (!v) return null;
+    const n = Number(v);
+    return Number.isFinite(n) ? n : null;
+  } catch {
+    return null;
+  }
+}
 
-        await AsyncStorage.setItem('user', JSON.stringify(newUser));
-        return { success: true };
-    } catch (error) {
-        console.error(error);
-        return { success: false, error: 'NETWORK_ERROR' };
+async function setTokenAndClientId(token: string, clientId?: number) {
+  await AsyncStorage.setItem(TOKEN_KEY, token);
+  if (typeof clientId === 'number' && Number.isFinite(clientId)) {
+    await AsyncStorage.setItem(CLIENT_ID_KEY, String(clientId));
+  }
+}
+
+/**
+ * Login client.
+ * Endpoint: POST /auth/login_client
+ */
+export async function login(
+  email: string,
+  password: string
+): Promise<LoginResult> {
+  const url = `${API.BASE_URL}/auth/login_client`;
+  console.log('POST', url, { email });
+
+  try {
+    const res = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, password }),
+    });
+
+    if (!res.ok) {
+      let msg = '';
+      try {
+        const b = await res.json();
+        msg = b?.message || b?.error || '';
+      } catch {}
+      if (res.status === 401) {
+        return {
+          success: false,
+          message: msg || 'Email ou mot de passe incorrect.',
+        };
+      }
+      return {
+        success: false,
+        message: msg || `Erreur serveur (${res.status}).`,
+      };
     }
-};
 
-export const getCurrentUser = async (): Promise<User | null> => {
-    try {
-        const user = await AsyncStorage.getItem('user');
-        return user ? JSON.parse(user) : null;
-    } catch {
-        return null;
+    const data = await res.json();
+    const token: string | undefined = data?.token;
+    if (!token) {
+      return {
+        success: false,
+        message: 'Réponse invalide du serveur (pas de token).',
+      };
     }
-};
 
-export const login = async (
-    email: string,
-    password: string
-): Promise<{ success: boolean; error?: string }> => {
-    try {
-        const res = await fetch(`${API_BASE_URL}/users?email=${email}&password=${password}`);
-        const users: User[] = await res.json();
+    const clientId: number | undefined =
+      (typeof data?.clientId === 'number' && data.clientId) ||
+      (typeof data?.user?.clientId === 'number' && data.user.clientId) ||
+      (typeof data?.client?.id === 'number' && data.client.id) ||
+      undefined;
 
-        if (users.length === 0) {
-            return { success: false, error: 'INVALID_CREDENTIALS' };
-        }
+    await setTokenAndClientId(token, clientId);
 
-        await AsyncStorage.setItem('user', JSON.stringify(users[0]));
-        return { success: true };
-    } catch (err) {
-        console.error(err);
-        return { success: false, error: 'NETWORK_ERROR' };
+    return { success: true, token, clientId };
+  } catch (e: any) {
+    return {
+      success: false,
+      message:
+        e?.message?.toString?.() ||
+        'Impossible de contacter le serveur.',
+    };
+  }
+}
+
+/**
+ * CLIENT signup:
+ * Endpoint: POST /auth/register_client
+ */
+export async function signup(
+  phoneDigits: string,
+  email: string,
+  password: string
+): Promise<SignupResult> {
+  const url = `${API.BASE_URL}/auth/register_client`;
+  console.log('POST', url, { email, phoneNumber: phoneDigits });
+  try {
+    const res = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        email,
+        password,
+        phoneNumber: phoneDigits,
+      }),
+    });
+
+    if (!res.ok) {
+      let msg = '';
+      try {
+        const b = await res.json();
+        msg = b?.message || b?.error || '';
+      } catch {}
+      if (res.status === 409)
+        return { success: false, message: 'Adresse e-mail déjà utilisée.' };
+      if (res.status === 400)
+        return { success: false, message: msg || 'Données invalides.' };
+      return {
+        success: false,
+        message: msg || `Erreur serveur (${res.status}).`,
+      };
     }
-};
 
-export const updateCurrentUser = async (updates: Partial<User>): Promise<{ success: boolean }> => {
-    try {
-        const currentUser = await getCurrentUser();
-        if (!currentUser) {
-            return { success: false };
-        }
+    return { success: true };
+  } catch (e: any) {
+    return {
+      success: false,
+      message:
+        e?.message?.toString?.() ||
+        'Impossible de contacter le serveur.',
+    };
+  }
+}
 
-        const updatedUser = { ...currentUser, ...updates };
+/** 🔹 Demande d’e-mail de réinitialisation de mot de passe */
+export async function requestPasswordReset(email: string): Promise<void> {
+  const base = API.BASE_URL.replace(/\/+$/, '');
+  const url = `${base}/auth/forgot-password`;
+  await http.post(url, { email });
+}
 
-        const res = await fetch(`${API_BASE_URL}/users/${currentUser.id}`, {
-            method: 'PATCH',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(updates),
-        });
-
-        if (!res.ok) {
-            return { success: false };
-        }
-
-        await AsyncStorage.setItem('user', JSON.stringify(updatedUser));
-
-        return { success: true };
-    } catch (error) {
-        console.error(error);
-        return { success: false };
-    }
-};
-
-export const updatePassword = async (currentPassword: string, newPassword: string): Promise<{ success: boolean; error?: string }> => {
-    try {
-        const user = await getCurrentUser();
-        if (!user) return { success: false, error: 'Utilisateur introuvable' };
-
-        if (user.password !== currentPassword) {
-            return { success: false, error: 'Mot de passe actuel incorrect' };
-        }
-
-        const res = await fetch(`${API_BASE_URL}/users/${user.id}`, {
-            method: 'PATCH',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ password: newPassword }),
-        });
-
-        if (!res.ok) {
-            return { success: false, error: 'Erreur serveur' };
-        }
-
-        // Update local storage
-        user.password = newPassword;
-        await AsyncStorage.setItem('user', JSON.stringify(user));
-
-        return { success: true };
-    } catch (err) {
-        console.error(err);
-        return { success: false, error: 'Erreur réseau' };
-    }
-};
-
-export const logout = async () => {
-    await AsyncStorage.removeItem('user');
-};
+export async function logout() {
+  await AsyncStorage.multiRemove([TOKEN_KEY, CLIENT_ID_KEY]);
+}

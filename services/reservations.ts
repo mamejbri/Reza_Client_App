@@ -1,300 +1,256 @@
-import { API_BASE_URL } from '@env';
-import { getCurrentUser } from './auth';
+// src/services/reservations.ts
+import http from "../src/api/http";
+import dayjs from "dayjs";
+import { EstablishmentType } from "../types/establishment";
+import { getCurrentUser } from "./user";
+import { API } from "../src/config/env";
 
-type Reservation = {
-    id: string;
-    place_id: string;
-    date: string;
-    time: string;
-    people?: number;
-    status: string;
-    program_id?: string;
+// ============================================================
+// TYPES
+// ============================================================
+
+export type StatutReservation =
+  | "PENDING"
+  | "CONFIRMED"
+  | "CANCELLED"
+  | "REFUSED"
+  | "CLIENT_CANCELLED";
+
+export interface ReservationDto {
+  id: number;
+  etablissementId: number;
+  prestationId?: number;
+  prestationName?: string;
+  prestationDuration?: number;
+  partySize?: number;
+  date: string;
+  heureDebut: string;
+  heureFin?: string;
+  statut: StatutReservation;
+  name: string;
+  clientId: number;
+  address: string;
+  imageUrl?: string;
+}
+
+export interface ReservationRequest {
+  clientId: number;
+  prestationId?: number | null;
+  collaborateurId?: number | null;
+  dateReservation: string;
+  heureDebut: string;
+  heureFin?: string | null;
+  statut: StatutReservation;
+  partySize?: number | null;
+  source?: string | null;
+}
+
+// ============================================================
+// UTIL
+// ============================================================
+
+export const computeHeureFin = (
+  dateISO: string,
+  startHHmm: string,
+  durationMin?: number
+): string | undefined => {
+  if (!durationMin) return undefined;
+  const hhmm = startHHmm.length > 5 ? startHHmm.slice(0, 5) : startHHmm;
+  return dayjs(`${dateISO}T${hhmm}`).add(durationMin, "minute").format("HH:mm");
 };
 
-type Place = {
-    id: string;
-    name: string;
-    address: string;
-    images: string[];
-    programs?: any[];
-    moyens?: {
-        moyen_id: string;
-        programs: any[];
-    }[];
-};
+// ============================================================
+// API: UPCOMING
+// ============================================================
 
-const findProgram = (place: Place, programId: string) => {
-    return (
-        place.programs?.find(p => p.id === programId) ||
-        place.moyens?.flatMap(m => m.programs).find(p => p.id === programId)
-    );
-};
+export async function fetchUserReservations(type?: EstablishmentType) {
+  try {
+    const user = await getCurrentUser(true);
+    const clientId =
+      (typeof user?.clientId === "number" ? user.clientId : null) ??
+      (typeof user?.id === "number" ? user.id : null);
 
-export const fetchUserReservations = async () => {
-    const user = await getCurrentUser();
-    if (!user) return [];
+    if (!clientId) return [];
 
-    const userRes = await fetch(`${API_BASE_URL}/users/${user.id}`);
-    const fullUser = await userRes.json();
-
-    const placesRes = await fetch(`${API_BASE_URL}/places`);
-    const places = await placesRes.json();
-
-    return (fullUser.reservations || []).map((res: Reservation) => {
-        const place = places.find((p: Place) => p.id === res.place_id);
-        const program = res.program_id ? findProgram(place, res.program_id) : undefined;
-
-        return {
-            ...res,
-            place,
-            name: place?.name,
-            address: place?.address,
-            image: { uri: place?.images?.[0] || '' },
-            program,
-        };
+    const url = `/reservations/me/${clientId}`;
+    const { data } = await http.get<ReservationDto[]>(url, {
+      params: type ? { type } : undefined,
     });
-};
 
-export const updateReservation = async (
-    reservationId: string,
-    placeId: string,
-    oldDate: string,
-    oldTime: string,
-    newDate: string,
-    newTime: string,
-    newPeople?: number,
-    newProgramId?: string
-): Promise<boolean> => {
-    try {
-        const user = await getCurrentUser();
-        if (!user) return false;
+    return Array.isArray(data) ? data : [];
+  } catch (e) {
+    console.error("fetchUserReservations error", e);
+    return [];
+  }
+}
 
-        const userRes = await fetch(`${API_BASE_URL}/users/${user.id}`);
-        const userData = await userRes.json();
+// ============================================================
+// API: PAST
+// ============================================================
 
-        const updatedReservations = (userData.reservations || []).map((res: Reservation) =>
-            res.id === reservationId
-                ? {
-                    ...res,
-                    date: newDate,
-                    time: newTime,
-                    people: newPeople,
-                    program_id: newProgramId ?? res.program_id,
-                }
-                : res
-        );
+export async function fetchUserPastReservations() {
+  try {
+    const user = await getCurrentUser(true);
+    const clientId =
+      (typeof user?.clientId === "number" ? user.clientId : null) ??
+      (typeof user?.id === "number" ? user.id : null);
 
-        await fetch(`${API_BASE_URL}/users/${user.id}`, {
-            method: 'PATCH',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ reservations: updatedReservations }),
-        });
+    if (!clientId) return [];
 
-        const placeRes = await fetch(`${API_BASE_URL}/places/${placeId}`);
-        const place = await placeRes.json();
+    const url = `/reservations/client/${clientId}/past`;
+    const { data } = await http.get<ReservationDto[]>(url);
 
-        if (newProgramId) {
-            const allPrograms = [
-                ...(place.programs || []),
-                ...place.moyens?.flatMap(m => m.programs) || []
-            ];
+    return Array.isArray(data) ? data : [];
+  } catch (e) {
+    console.error("fetchUserPastReservations error", e);
+    return [];
+  }
+}
 
-            const oldProgram = allPrograms.find(p => p.id === newProgramId);
-            const newProgram = allPrograms.find(p => p.id === newProgramId);
+// ============================================================
+// API: CREATE FLEX
+// ============================================================
 
-            if (oldProgram?.available_slots?.[oldDate]) {
-                oldProgram.available_slots[oldDate] = oldProgram.available_slots[oldDate].map(s =>
-                    s.time === oldTime && s.reserved_by === user.id ? { ...s, reserved_by: null } : s
-                );
-            }
+export interface ReservationCreateFlexDto {
+  id: number | string;
+  etablissementId: number;
+  clientId: number;
+  date: string;
+  time: string;
+  partySize?: number | null;
+  prestationId?: number | null;
+  statut: StatutReservation;
+}
 
-            if (newProgram?.available_slots?.[newDate]) {
-                newProgram.available_slots[newDate] = newProgram.available_slots[newDate].map(s =>
-                    s.time === newTime && s.reserved_by === null ? { ...s, reserved_by: user.id } : s
-                );
-            }
+export async function createReservation(
+  placeId: number,
+  dateISO: string,
+  timeHHmm: string,
+  people?: number,
+  programId?: string,
+  clientId?: number
+): Promise<ReservationCreateFlexDto> {
+  if (!clientId) throw new Error("clientId is required");
 
-            await fetch(`${API_BASE_URL}/places/${placeId}`, {
-                method: 'PATCH',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ programs: place.programs, moyens: place.moyens }),
-            });
-        } else {
-            const updatedSlots = { ...place.available_slots };
+  const dto = {
+    etablissementId: placeId,
+    clientId,
+    date: dateISO,
+    time: timeHHmm.length > 5 ? timeHHmm.slice(0, 5) : timeHHmm,
+    partySize: typeof people === "number" ? people : null,
+    prestationId: programId ? Number(programId) : null,
+    collborateurId: null,
+    statut: "PENDING" as StatutReservation,
+    id: undefined,
+  };
 
-            if (updatedSlots[oldDate]) {
-                updatedSlots[oldDate] = updatedSlots[oldDate].map(s =>
-                    s.time === oldTime && s.reserved_by === user.id ? { ...s, reserved_by: null } : s
-                );
-            }
+  const { data } = await http.post("/reservations/flex", dto);
+  return data;
+}
 
-            if (updatedSlots[newDate]) {
-                updatedSlots[newDate] = updatedSlots[newDate].map(s =>
-                    s.time === newTime && s.reserved_by === null ? { ...s, reserved_by: user.id } : s
-                );
-            }
+// wrapper
+export async function createReservationFlex(input: {
+  placeId?: number;
+  establishmentId?: number;
+  etablissementId?: number;
+  dateISO: string;
+  time: string;
+  people?: number;
+  programId?: string;
+  clientId: number;
+}): Promise<ReservationCreateFlexDto> {
+  const placeId =
+    input.placeId ?? input.establishmentId ?? input.etablissementId;
 
-            await fetch(`${API_BASE_URL}/places/${placeId}`, {
-                method: 'PATCH',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ available_slots: updatedSlots }),
-            });
-        }
+  if (!placeId) throw new Error("Missing placeId");
 
-        return true;
-    } catch (err) {
-        console.error('updateReservation error:', err);
-        return false;
-    }
-};
+  return createReservation(
+    placeId,
+    input.dateISO,
+    input.time,
+    input.people,
+    input.programId,
+    input.clientId
+  );
+}
 
-export const cancelReservation = async (
-    reservationId: string,
-    placeId: string,
-    date: string,
-    time: string,
-    programId?: string
-): Promise<boolean> => {
-    try {
-        const user = await getCurrentUser();
-        if (!user) return false;
+// ============================================================
+// API: UPDATE
+// ============================================================
 
-        const userRes = await fetch(`${API_BASE_URL}/users/${user.id}`);
-        const userData = await userRes.json();
+export async function updateReservation(input: {
+  id: string | number;
+  clientId: number;
+  dateISO: string;
+  timeHHmm: string;
+  statut?: StatutReservation;
+  people?: number;
+  programId?: string;
+  collaborateurId?: number;
+  durationMin?: number;
+  source?: string;
+}): Promise<boolean> {
+  const {
+    id,
+    clientId,
+    dateISO,
+    timeHHmm,
+    statut = "PENDING",
+    people,
+    programId,
+    collaborateurId,
+    durationMin,
+    source,
+  } = input;
 
-        const updatedReservations = (userData.reservations || []).filter(
-            (res: Reservation) => res.id !== reservationId
-        );
+  const body: ReservationRequest = {
+    clientId,
+    prestationId: programId ? Number(programId) : undefined,
+    collaborateurId: collaborateurId ?? undefined,
+    dateReservation: dateISO,
+    heureDebut: timeHHmm.length > 5 ? timeHHmm.slice(0, 5) : timeHHmm,
+    heureFin: durationMin
+      ? computeHeureFin(dateISO, timeHHmm, durationMin) ?? null
+      : undefined,
+    statut,
+    partySize: typeof people === "number" ? people : undefined,
+    source: source ?? undefined,
+  };
 
-        await fetch(`${API_BASE_URL}/users/${user.id}`, {
-            method: 'PATCH',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ reservations: updatedReservations }),
-        });
+  const { status } = await http.put(`/reservations/${id}`, body);
+  return status >= 200 && status < 300;
+}
 
-        const placeRes = await fetch(`${API_BASE_URL}/places/${placeId}`);
-        const place = await placeRes.json();
+// ============================================================
+// API: CANCEL BY CLIENT
+// ============================================================
 
-        if (programId) {
-            const allPrograms = [
-                ...(place.programs || []),
-                ...place.moyens?.flatMap(m => m.programs) || []
-            ];
+export async function cancelReservation(
+  id: string | number,
+  _placeId: number,
+  date: string,
+  time: string,
+  programId?: string | number | null,
+  partySize?: number | null
+): Promise<boolean> {
+  try {
+    const user = await getCurrentUser(true);
+    const clientId =
+      (typeof user?.clientId === "number" ? user.clientId : null) ??
+      (typeof user?.id === "number" ? user.id : null);
 
-            const program = allPrograms.find(p => p.id === programId);
+    if (!clientId) return false;
 
-            if (program?.available_slots?.[date]) {
-                program.available_slots[date] = program.available_slots[date].map(s =>
-                    s.time === time && s.reserved_by === user.id ? { ...s, reserved_by: null } : s
-                );
-            }
+    const url = `${API.BASE_URL.replace(/\/+$/, "")}/reservations/client/cancel`;
 
-            await fetch(`${API_BASE_URL}/places/${placeId}`, {
-                method: 'PATCH',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ programs: place.programs, moyens: place.moyens }),
-            });
-        } else {
-            const updatedSlots = { ...place.available_slots };
+    await http.post(url, {
+      reservationId: Number(id),
+      clientId,
+    });
 
-            if (updatedSlots[date]) {
-                updatedSlots[date] = updatedSlots[date].map(s =>
-                    s.time === time && s.reserved_by === user.id ? { ...s, reserved_by: null } : s
-                );
-            }
-
-            await fetch(`${API_BASE_URL}/places/${placeId}`, {
-                method: 'PATCH',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ available_slots: updatedSlots }),
-            });
-        }
-
-        return true;
-    } catch (err) {
-        console.error('cancelReservation error:', err);
-        return false;
-    }
-};
-
-export const addReservation = async (
-    placeId: string,
-    date: string,
-    time: string,
-    people?: number,
-    programId?: string
-): Promise<Reservation | null> => {
-    try {
-        const user = await getCurrentUser();
-        if (!user) return null;
-
-        const userRes = await fetch(`${API_BASE_URL}/users/${user.id}`);
-        const userData = await userRes.json();
-
-        const alreadyExists = (userData.reservations || []).some(
-            (r: Reservation) => r.place_id === placeId && r.date === date && r.time === time
-        );
-        if (alreadyExists) return null;
-
-        const reservationId = `res_${Date.now()}`;
-
-        const newReservation: Reservation = {
-            id: reservationId,
-            place_id: placeId,
-            date,
-            time,
-            status: 'pending',
-            ...(people ? { people } : {}),
-            ...(programId ? { program_id: programId } : {}),
-        };
-
-        const updatedReservations = [...(userData.reservations || []), newReservation];
-        await fetch(`${API_BASE_URL}/users/${user.id}`, {
-            method: 'PATCH',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ reservations: updatedReservations }),
-        });
-
-        const placeRes = await fetch(`${API_BASE_URL}/places/${placeId}`);
-        const place = await placeRes.json();
-
-        if (programId) {
-            const allPrograms = [
-                ...(place.programs || []),
-                ...place.moyens?.flatMap(m => m.programs) || []
-            ];
-
-            const program = allPrograms.find(p => p.id === programId);
-
-            if (program?.available_slots?.[date]) {
-                program.available_slots[date] = program.available_slots[date].map(s =>
-                    s.time === time && s.reserved_by === null ? { ...s, reserved_by: user.id } : s
-                );
-            }
-
-            await fetch(`${API_BASE_URL}/places/${placeId}`, {
-                method: 'PATCH',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ programs: place.programs, moyens: place.moyens }),
-            });
-        } else {
-            const updatedSlots = { ...place.available_slots };
-            if (updatedSlots[date]) {
-                updatedSlots[date] = updatedSlots[date].map(s =>
-                    s.time === time && s.reserved_by === null ? { ...s, reserved_by: user.id } : s
-                );
-            }
-
-            await fetch(`${API_BASE_URL}/places/${placeId}`, {
-                method: 'PATCH',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ available_slots: updatedSlots }),
-            });
-        }
-
-        return newReservation;
-    } catch (err) {
-        console.error('addReservation error:', err);
-        return null;
-    }
-};
+    return true;
+  } catch (e) {
+    console.error("cancelReservation error", e);
+    return false;
+  }
+}

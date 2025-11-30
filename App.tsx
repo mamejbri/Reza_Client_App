@@ -1,6 +1,6 @@
 import React from 'react';
-import { NavigationContainer } from '@react-navigation/native';
-import AppNavigator from './navigation/AppNavigator';
+import { DefaultTheme, NavigationContainer } from '@react-navigation/native';
+import AppNavigator from './src/navigation/AppNavigator';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { LocaleConfig } from 'react-native-calendars';
 import "./global.css"
@@ -23,11 +23,18 @@ LocaleConfig.locales['fr'] = {
 };
 
 LocaleConfig.defaultLocale = 'fr';
+const MyTheme = {
+  ...DefaultTheme,
+  colors: {
+    ...DefaultTheme.colors,
+    background: '#FFFFFF',   // 👈 sets white background for all screens
+  },
+};
 
 const App: React.FC = () => {
   return (
     <SafeAreaProvider>
-      <NavigationContainer>
+    <NavigationContainer theme={MyTheme}>
         <AppNavigator />
       </NavigationContainer>
     </SafeAreaProvider>

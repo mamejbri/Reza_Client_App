@@ -1,18 +1,48 @@
-import { ImageSourcePropType } from 'react-native';
+// src/types/navigation.ts
+import type { EstablishmentType } from './establishment';
+import type { EtablissementDTO } from '../services/etablissements';
 
 export type RootStackParamList = {
   Home: undefined;
-  Booking: { background: ImageSourcePropType; category: string };
+
+  // Search hero
+  Booking: {
+    background: any;
+    type: EstablishmentType;
+  };
+
+  // Results
+  SearchResults: {
+    query?: string | null;
+    coords?: { lat: number; lng: number } | null;
+    type: EstablishmentType;
+  };
+
+  // Auth
   Login: undefined;
   Signup: undefined;
-  Appointments: undefined;
+  ForgotPassword: undefined; // 🔹 utilisé par Login & ForgotPasswordScreen
+
+  // User area
+  Appointments: { type?: EstablishmentType } | undefined;
+
+  // Reservation detail
   ReservationDetail: {
     reservation: any;
-    startInEditMode: boolean;
+    isPast?: boolean;
+    startInEditMode?: boolean;
   };
-  SearchResults: {
-    query: string;
-    category: string;
-    coords: { lat: number; lng: number } | null;
+
+  // Booking flow for a specific establishment
+  EstablishmentBooking: {
+    establishment: EtablissementDTO
+    initialPeople?: number;
+    initialDateISO: string; // YYYY-MM-DD
+    initialTime: string;
+    availableSlots: Record<
+      string,
+      { time: string; reserved_by: string | null }[]
+    >;
+    initialProgramId?: string;
   };
 };
