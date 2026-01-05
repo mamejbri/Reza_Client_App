@@ -6,6 +6,6 @@ export const API = {
     ? (USE_USB_REVERSE
         ? 'http://localhost:8080/api/reza'        // via adb reverse
         : 'http://192.168.100.44:8080/api/reza')  // replace with your PC IP for Wi-Fi
-    : 'https://your-production-domain.com/api',
+    : 'https://pro.booktareza.com/api/reza',
 };
 
