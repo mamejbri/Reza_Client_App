@@ -6,7 +6,7 @@ export type LoginReq  = { email: string; password: string };
 export type LoginResp = { token: string; userId: number; email: string; clientId?: number };
 
 const TOKEN_KEY = 'token';
-const CLIENT_ID_KEY = 'client_id';
+const CLIENT_ID_KEY = 'clientId';
 
 export async function setStoredClientId(id: number | null | undefined) {
   try {

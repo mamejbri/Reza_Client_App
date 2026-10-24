@@ -5,8 +5,9 @@ export enum EstablishmentType {
   ACTIVITY = 'ACTIVITY',
 }
 
+/** Translation keys — render with t(ESTABLISHMENT_LABELS[type]). */
 export const ESTABLISHMENT_LABELS: Record<EstablishmentType, string> = {
-  [EstablishmentType.SPA]: 'Soins et beauté',
-  [EstablishmentType.RESTAURANT]: 'Restaurant',
-  [EstablishmentType.ACTIVITY]: 'Activité',
+  [EstablishmentType.SPA]: 'types.SPA',
+  [EstablishmentType.RESTAURANT]: 'types.RESTAURANT',
+  [EstablishmentType.ACTIVITY]: 'types.ACTIVITY',
 };

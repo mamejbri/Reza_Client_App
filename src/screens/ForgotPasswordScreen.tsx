@@ -1,23 +1,18 @@
 // src/screens/ForgotPasswordScreen.tsx
 import React, { useState } from 'react';
-import {
-  View,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  ScrollView,
-  Alert,
-  ActivityIndicator,
-} from 'react-native';
+import { Alert } from '../ui/AppAlert';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import type { RootStackParamList } from '../../types/navigation';
 import { requestPasswordReset } from '../../services/auth';
+import { useI18n } from '../i18n/LocaleProvider';
+import { AuthLayout, AuthInput, AuthButton, AuthFooterLink } from '../ui/AuthKit';
 
 type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
 
 const ForgotPasswordScreen: React.FC = () => {
   const navigation = useNavigation<NavigationProp>();
+  const { t } = useI18n();
 
   const [email, setEmail] = useState('');
   const [loading, setLoading] = useState(false);
@@ -29,11 +24,11 @@ const ForgotPasswordScreen: React.FC = () => {
 
   const handleSubmit = async () => {
     if (!email) {
-      Alert.alert('Erreur', 'Veuillez saisir votre adresse e-mail.');
+      Alert.alert(t('common.error'), t('forgot.emailRequired'));
       return;
     }
     if (!isValidEmail(email)) {
-      Alert.alert('Erreur', 'Veuillez entrer une adresse e-mail valide.');
+      Alert.alert(t('common.error'), t('common.invalidEmail'));
       return;
     }
 
@@ -43,11 +38,11 @@ const ForgotPasswordScreen: React.FC = () => {
       setLoading(false);
 
       Alert.alert(
-        'E-mail envoyé',
-        "Si un compte existe avec cette adresse, un e-mail de réinitialisation a été envoyé.",
+        t('forgot.sentTitle'),
+        t('forgot.sentMessage'),
         [
           {
-            text: 'OK',
+            text: t('common.ok'),
             onPress: () => navigation.goBack(),
           },
         ]
@@ -56,61 +51,37 @@ const ForgotPasswordScreen: React.FC = () => {
       setLoading(false);
       console.log('Forgot password error:', e);
       Alert.alert(
-        'Erreur',
-        e?.message ?? 'Une erreur est survenue lors de la demande.'
+        t('common.error'),
+        e?.message ?? t('forgot.error')
       );
     }
   };
 
   return (
-    <ScrollView keyboardShouldPersistTaps="handled">
-      <View className="flex-1 pt-12 px-4 pb-4 bg-white">
-        <Text className="text-center text-2xl font-bold mb-6">
-          Mot de passe oublié
-        </Text>
+    <AuthLayout title={t('forgot.title')} subtitle={t('forgot.copy')}>
+      <AuthInput
+        icon="mail-outline"
+        placeholder={t('auth.email')}
+        value={email}
+        onChangeText={setEmail}
+        valid={isValidEmail(email)}
+        autoCapitalize="none"
+        autoComplete="email"
+        textContentType="emailAddress"
+        keyboardType="email-address"
+        returnKeyType="send"
+        onSubmitEditing={() => canSubmit && handleSubmit()}
+      />
 
-        <Text className="text-center text-base mb-8">
-          Saisissez l’adresse e-mail associée à votre compte.
-          {'\n'}
-          Nous vous enverrons un lien pour réinitialiser votre mot de passe.
-        </Text>
+      <AuthButton
+        label={t('forgot.send')}
+        onPress={handleSubmit}
+        disabled={!canSubmit}
+        loading={loading}
+      />
 
-        <TextInput
-          placeholder="E-mail"
-          className="input-base mb-6"
-          placeholderTextColor="#000"
-          value={email}
-          onChangeText={setEmail}
-          autoCapitalize="none"
-          keyboardType="email-address"
-          returnKeyType="done"
-          onSubmitEditing={() => canSubmit && handleSubmit()}
-        />
-
-        <TouchableOpacity
-          onPress={handleSubmit}
-          className={`btn-primary ${!canSubmit ? 'opacity-50' : ''}`}
-          disabled={!canSubmit}
-        >
-          {loading ? (
-            <ActivityIndicator color="#fff" />
-          ) : (
-            <Text className="btn-primary-text">
-              Envoyer le lien de réinitialisation
-            </Text>
-          )}
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          className="mt-6"
-          onPress={() => navigation.goBack()}
-        >
-          <Text className="text-center text-base underline">
-            Retour à la connexion
-          </Text>
-        </TouchableOpacity>
-      </View>
-    </ScrollView>
+      <AuthFooterLink prompt="" action={t('forgot.back')} onPress={() => navigation.goBack()} />
+    </AuthLayout>
   );
 };
 

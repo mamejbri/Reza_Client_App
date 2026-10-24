@@ -148,6 +148,34 @@ export async function createReservation(
   return data;
 }
 
+/** SPA cart: books several prestations as one visit starting at dateISO/timeHHmm (backend sums the durations). */
+export async function createReservationCart(
+  placeId: number,
+  dateISO: string,
+  timeHHmm: string,
+  prestationIds: number[],
+  clientId: number
+): Promise<ReservationCreateFlexDto> {
+  if (!clientId) throw new Error("clientId is required");
+  if (prestationIds.length === 0) throw new Error("prestationIds is required");
+
+  const dto = {
+    etablissementId: placeId,
+    clientId,
+    date: dateISO,
+    time: timeHHmm.length > 5 ? timeHHmm.slice(0, 5) : timeHHmm,
+    partySize: null,
+    // single item: same payload as a normal booking; several: the backend's multi-prestation path
+    prestationId: prestationIds.length === 1 ? prestationIds[0] : null,
+    prestationIds: prestationIds.length > 1 ? prestationIds : null,
+    collborateurId: null,
+    statut: "PENDING" as StatutReservation,
+  };
+
+  const { data } = await http.post("/reservations/flex", dto);
+  return data;
+}
+
 // wrapper
 export async function createReservationFlex(input: {
   placeId?: number;

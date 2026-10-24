@@ -1,7 +1,11 @@
 import React, { useState } from 'react';
-import { View, TextInput, TouchableOpacity, Text, Alert, ActivityIndicator, StyleSheet } from 'react-native';
-import Modal from 'react-native-modal';
+import { View, TouchableOpacity, Text, StyleSheet, Modal, Pressable, KeyboardAvoidingView, Platform } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { Alert } from '../src/ui/AppAlert';
 import { updatePassword } from '../services/auth';
+import { useI18n } from '../src/i18n/LocaleProvider';
+import AppIcon from '../src/icons/AppIcon';
+import { AuthInput, AuthButton, BRAND } from '../src/ui/AuthKit';
 
 type ChangePasswordModalProps = {
     visible: boolean;
@@ -13,14 +17,16 @@ const ChangePasswordModal: React.FC<ChangePasswordModalProps> = ({ visible, onCl
     const [newPassword, setNewPassword] = useState('');
     const [confirmNewPassword, setConfirmNewPassword] = useState('');
     const [loading, setLoading] = useState(false);
+    const { t } = useI18n();
+    const insets = useSafeAreaInsets();
 
     const handleSubmit = async () => {
         if (!currentPassword || !newPassword || !confirmNewPassword) {
-            Alert.alert('Erreur', 'Veuillez remplir tous les champs.');
+            Alert.alert(t('common.error'), t('common.fillAllFields'));
             return;
         }
         if (newPassword !== confirmNewPassword) {
-            Alert.alert('Erreur', 'Les mots de passe ne correspondent pas.');
+            Alert.alert(t('common.error'), t('common.passwordMismatch'));
             return;
         }
 
@@ -29,70 +35,96 @@ const ChangePasswordModal: React.FC<ChangePasswordModalProps> = ({ visible, onCl
         setLoading(false);
 
         if (result.success) {
-            Alert.alert('Succès', 'Mot de passe modifié.');
+            Alert.alert(t('common.success'), t('password.saved'));
             onClose();
         } else {
-            Alert.alert('Erreur', result.error || 'Erreur lors de la mise à jour.');
+            Alert.alert(t('common.error'), result.error || t('password.error'));
         }
     };
 
     return (
         <Modal
-            isVisible={visible}
-            onBackdropPress={onClose}
-            onBackButtonPress={onClose}
-            style={{ justifyContent: 'flex-end', margin: 0 }}
+            visible={visible}
+            transparent
+            animationType="slide"
+            onRequestClose={onClose}
         >
-            <View style={styles.modal}>
-                <View className="flex gap-2">
-                    <View className="flex gap-1">
-                        <Text className="text-sm font-medium">Mot de passe actuel</Text>
-                        <TextInput
-                            secureTextEntry
+            <KeyboardAvoidingView
+                style={styles.backdrop}
+                behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+            >
+                <Pressable style={StyleSheet.absoluteFill} onPress={onClose} />
+                <View style={[styles.sheet, { paddingBottom: Math.max(insets.bottom, 12) + 12 }]}>
+                    <View style={styles.handle} />
+
+                    <View style={styles.header}>
+                        <View style={styles.headerIcon}>
+                            <AppIcon name="lock-closed-outline" size={20} color={BRAND} />
+                        </View>
+                        <Text style={styles.title}>{t('profile.changePassword')}</Text>
+                        <TouchableOpacity onPress={onClose} hitSlop={10} accessibilityRole="button">
+                            <AppIcon name="close" size={24} color="#16120F" />
+                        </TouchableOpacity>
+                    </View>
+
+                    <View style={styles.fields}>
+                        <AuthInput
+                            icon="key-outline"
+                            placeholder={t('password.current')}
+                            secure
                             value={currentPassword}
                             onChangeText={setCurrentPassword}
-                            className="input-base mb-4"
-                            placeholderTextColor="#000" />
-                    </View>
-                    <View className="flex gap-1">
-                        <Text className="text-sm font-medium">Nouveau mot de passe</Text>
-                        <TextInput
-                            secureTextEntry
+                            autoComplete="current-password"
+                            textContentType="password"
+                        />
+                        <AuthInput
+                            icon="lock-closed-outline"
+                            placeholder={t('password.new')}
+                            secure
                             value={newPassword}
                             onChangeText={setNewPassword}
-                            className="input-base mb-4"
-                            placeholderTextColor="#000" />
-                    </View>
-                    <View className="flex gap-1">
-                        <Text className="text-sm font-medium">Vérification nouveau mot de passe</Text>
-                        <TextInput
-                            secureTextEntry
+                            autoComplete="new-password"
+                            textContentType="newPassword"
+                        />
+                        <AuthInput
+                            icon="shield-checkmark-outline"
+                            placeholder={t('password.confirm')}
+                            secure
                             value={confirmNewPassword}
                             onChangeText={setConfirmNewPassword}
-                            className="input-base"
-                            placeholderTextColor="#000" />
+                            autoComplete="new-password"
+                            textContentType="newPassword"
+                        />
                     </View>
-                </View>
 
-                <TouchableOpacity onPress={handleSubmit} className="btn-primary mt-6">
-                    {loading ? (
-                        <ActivityIndicator color="#fff" />
-                    ) : (
-                        <Text className="btn-primary-text text-center">Enregistrer</Text>
-                    )}
-                </TouchableOpacity>
-            </View>
+                    <AuthButton label={t('common.save')} onPress={handleSubmit} loading={loading} />
+                </View>
+            </KeyboardAvoidingView>
         </Modal>
     );
 };
 
 const styles = StyleSheet.create({
-    modal: {
+    backdrop: { flex: 1, backgroundColor: 'rgba(12,8,6,0.45)', justifyContent: 'flex-end' },
+    sheet: {
         backgroundColor: 'white',
-        padding: 20,
-        borderTopLeftRadius: 20,
-        borderTopRightRadius: 20
+        paddingHorizontal: 20,
+        paddingTop: 10,
+        borderTopLeftRadius: 28,
+        borderTopRightRadius: 28,
     },
+    handle: { alignSelf: 'center', width: 40, height: 5, borderRadius: 3, backgroundColor: '#DDD8D2', marginBottom: 14 },
+    header: { flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 18 },
+    headerIcon: {
+        width: 40,
+        height: 40,
+        borderRadius: 12,
+        backgroundColor: 'rgba(197,51,52,0.1)',
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    title: { flex: 1, fontSize: 19, fontWeight: '800', color: '#16120F' },
+    fields: { gap: 12, marginBottom: 20 },
 });
 
 export default ChangePasswordModal;

@@ -1,6 +1,7 @@
 // src/services/auth.ts
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { API } from '../src/config/env';
+import { translate } from '../src/i18n/LocaleProvider';
 import http from '../src/api/http';
 
 type Ok = { success: true };
@@ -69,12 +70,12 @@ export async function login(
       if (res.status === 401) {
         return {
           success: false,
-          message: msg || 'Email ou mot de passe incorrect.',
+          message: translate('auth.invalidCredentials'),
         };
       }
       return {
         success: false,
-        message: msg || `Erreur serveur (${res.status}).`,
+        message: msg || translate('auth.serverError', { status: res.status }),
       };
     }
 
@@ -83,7 +84,7 @@ export async function login(
     if (!token) {
       return {
         success: false,
-        message: 'Réponse invalide du serveur (pas de token).',
+        message: translate('auth.noToken'),
       };
     }
 
@@ -135,12 +136,12 @@ export async function signup(
         msg = b?.message || b?.error || '';
       } catch {}
       if (res.status === 409)
-        return { success: false, message: 'Adresse e-mail déjà utilisée.' };
+        return { success: false, message: translate('auth.emailTaken') };
       if (res.status === 400)
-        return { success: false, message: msg || 'Données invalides.' };
+        return { success: false, message: msg || translate('auth.invalidData') };
       return {
         success: false,
-        message: msg || `Erreur serveur (${res.status}).`,
+        message: msg || translate('auth.serverError', { status: res.status }),
       };
     }
 
@@ -162,6 +163,22 @@ export async function requestPasswordReset(email: string): Promise<void> {
   await http.post(url, { email });
 }
 
+/** Changes the logged-in user's password (PUT /auth/change-password, bearer token from http). */
+export async function updatePassword(
+  currentPassword: string,
+  newPassword: string
+): Promise<{ success: boolean; error?: string }> {
+  try {
+    await http.put('/auth/change-password', { currentPassword, newPassword });
+    return { success: true };
+  } catch (e: any) {
+    if (e?.response?.status === 401) {
+      return { success: false, error: translate('password.wrongCurrent') };
+    }
+    return { success: false, error: e?.response?.data?.message || translate('password.error') };
+  }
+}
+
 export async function logout() {
-  await AsyncStorage.multiRemove([TOKEN_KEY, CLIENT_ID_KEY]);
+  await AsyncStorage.multiRemove([TOKEN_KEY, CLIENT_ID_KEY, 'currentUser']);
 }

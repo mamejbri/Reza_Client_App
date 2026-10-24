@@ -1,7 +1,9 @@
 // components/ReviewSection.tsx
 import React from 'react';
-import { View, Text, ActivityIndicator, Image } from 'react-native';
-import IcoMoonIcon from '../src/icons/IcoMoonIcon';
+import { View, Text, ActivityIndicator, Image, StyleSheet } from 'react-native';
+import dayjs from 'dayjs';
+import AppIcon from '../src/icons/AppIcon';
+import { translate, useI18n } from '../src/i18n/LocaleProvider';
 
 /** Raw review shape from API (flexible on client fields) */
 type RawReview = {
@@ -72,101 +74,139 @@ const getClientMeta = (r: RawReview) => {
     [first, last].filter(Boolean).join(' ').trim() ||
     first ||
     last ||
-    (email ?? 'Utilisateur');
+    (email ?? translate('reviews.user'));
 
   const initials = (first?.[0] ?? '') + (last?.[0] ?? '');
   return { displayName, initials: initials.toUpperCase() || 'U', avatar };
 };
 
-const StarRow = ({ rating }: { rating: number }) => (
-  <View className="flex-row items-center">
+const StarRow = ({ rating, size = 14 }: { rating: number; size?: number }) => (
+  <View style={styles.stars}>
     {[1, 2, 3, 4, 5].map((i) => (
-      <IcoMoonIcon
+      <AppIcon
         key={i}
-        name={i <= (rating ?? 0) ? 'star-solid' : 'star'}
-        size={16}
-        color={i <= (rating ?? 0) ? '#C53334' : '#C9C9C9'} // red like your UI
+        name={i <= Math.round(rating ?? 0) ? 'star' : 'star-outline'}
+        size={size}
+        color={i <= Math.round(rating ?? 0) ? BRAND : '#D6D1CB'}
       />
     ))}
   </View>
 );
 
-/** Single review card styled like the mock */
 const ReviewCard: React.FC<{ r: RawReview }> = ({ r }) => {
   const { displayName, initials, avatar } = getClientMeta(r);
   const text = (r.contenu ?? '').trim();
+  const date = r.createdDate && dayjs(r.createdDate).isValid() ? dayjs(r.createdDate).format('D MMM YYYY') : null;
 
   return (
-    <View className="bg-[#F3F4F6] rounded-2xl p-3 mb-4">
-      {/* Header: avatar + name + stars */}
-      <View className="flex-row items-center justify-between mb-2">
-        <View className="flex-row items-center">
-          {avatar ? (
-            <Image
-              source={{ uri: avatar }}
-              style={{ width: 36, height: 36, borderRadius: 18, marginRight: 8 }}
-            />
-          ) : (
-            <View
-              style={{ width: 36, height: 36, borderRadius: 18 }}
-              className="bg-gray-300 mr-2 items-center justify-center"
-            >
-              <Text className="text-[12px] font-bold text-gray-700">{initials}</Text>
-            </View>
-          )}
-          <Text className="text-[15px] font-semibold">{displayName}</Text>
+    <View style={styles.card}>
+      <View style={styles.cardHeader}>
+        {avatar ? (
+          <Image source={{ uri: avatar }} style={styles.avatar} />
+        ) : (
+          <View style={[styles.avatar, styles.avatarInitials]}>
+            <Text style={styles.initials}>{initials}</Text>
+          </View>
+        )}
+        <View style={{ flex: 1 }}>
+          <Text style={styles.name} numberOfLines={1}>{displayName}</Text>
+          <View style={styles.metaRow}>
+            <StarRow rating={r.rating ?? 0} />
+            {!!date && <Text style={styles.date}>{date}</Text>}
+          </View>
         </View>
-
-        {/* Stars (red) */}
-        <StarRow rating={r.rating ?? 0} />
       </View>
 
-      {/* Quoted/italic content */}
-      {!!text && (
-        <View className="bg-white rounded-xl px-3 py-3">
-          <Text className="text-[14px] text-gray-800 italic">
-            “{text}”
-          </Text>
-        </View>
-      )}
+      {!!text && <Text style={styles.text}>{text}</Text>}
     </View>
   );
 };
 
 const ReviewSection: React.FC<Props> = ({ loading, average, count, reviews }) => {
+  const { t } = useI18n();
   if (loading) {
     return (
-      <View className="py-6 items-center">
-        <ActivityIndicator size="small" color="#C53334" />
+      <View style={{ paddingVertical: 32, alignItems: 'center' }}>
+        <ActivityIndicator size="small" color={BRAND} />
       </View>
     );
   }
 
   const items = Array.isArray(reviews) ? reviews : [];
+  const hasSummary = typeof average === 'number' && typeof count === 'number' && count > 0;
 
   return (
     <View>
-      {/* Summary row */}
-      <View className="flex-row items-center gap-2 mb-3">
-        {typeof average === 'number' && typeof count === 'number' ? (
-          <>
-            <IcoMoonIcon name="star" size={20} color="#C53334" />
-            <Text className="text-base font-semibold">{average.toFixed(1)}</Text>
-            <Text className="text-base text-gray-600">• {count} avis</Text>
-          </>
-        ) : (
-          <Text className="text-base text-gray-600">Aucun avis</Text>
-        )}
-      </View>
+      {/* Summary */}
+      {hasSummary && (
+        <View style={styles.summary}>
+          <Text style={styles.summaryScore}>{average!.toFixed(1)}</Text>
+          <View style={{ gap: 4 }}>
+            <StarRow rating={average!} size={18} />
+            <Text style={styles.summaryCount}>{t('common.reviews', { count: count! })}</Text>
+          </View>
+        </View>
+      )}
 
       {/* List */}
       {items.length === 0 ? (
-        <Text className="text-sm text-gray-500">Pas encore d’avis.</Text>
+        <View style={styles.empty}>
+          <AppIcon name="chatbubble-ellipses-outline" size={26} color={MUTED} />
+          <Text style={styles.emptyText}>{t('reviews.none')}</Text>
+        </View>
       ) : (
         <View>{items.map((r) => <ReviewCard key={r.id} r={r} />)}</View>
       )}
     </View>
   );
 };
+
+const BRAND = '#C53334';
+const INK = '#16120F';
+const MUTED = '#8A8580';
+
+const styles = StyleSheet.create({
+  stars: { flexDirection: 'row', alignItems: 'center', gap: 2 },
+
+  summary: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 16,
+    padding: 18,
+    marginBottom: 16,
+    borderRadius: 20,
+    backgroundColor: '#FFFFFF',
+    shadowColor: '#000',
+    shadowOpacity: 0.06,
+    shadowRadius: 12,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 2,
+  },
+  summaryScore: { fontSize: 44, lineHeight: 50, fontWeight: '800', color: INK, letterSpacing: -1 },
+  summaryCount: { fontSize: 14, color: MUTED, fontWeight: '500' },
+
+  card: {
+    padding: 16,
+    marginBottom: 12,
+    borderRadius: 18,
+    backgroundColor: '#FFFFFF',
+    shadowColor: '#000',
+    shadowOpacity: 0.05,
+    shadowRadius: 10,
+    shadowOffset: { width: 0, height: 3 },
+    elevation: 1,
+  },
+  cardHeader: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+  avatar: { width: 42, height: 42, borderRadius: 21 },
+  avatarInitials: { backgroundColor: 'rgba(197,51,52,0.12)', alignItems: 'center', justifyContent: 'center' },
+  initials: { fontSize: 14, fontWeight: '800', color: BRAND },
+  name: { fontSize: 15, fontWeight: '700', color: INK },
+  metaRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 3 },
+  date: { fontSize: 12, color: MUTED },
+  text: { marginTop: 12, fontSize: 15, lineHeight: 22, color: '#3A3530' },
+
+  empty: { alignItems: 'center', gap: 10, paddingVertical: 36, borderRadius: 18, backgroundColor: '#F5F3F0' },
+  emptyText: { fontSize: 15, color: MUTED, textAlign: 'center' },
+});
 
 export default ReviewSection;

@@ -1,18 +1,30 @@
 // src/screens/BookingScreen.tsx
 import React, { useState } from 'react';
 import {
-  View, Text, TextInput, TouchableOpacity, ImageBackground, Keyboard, TouchableWithoutFeedback,
-  PermissionsAndroid, Platform, ActivityIndicator, ScrollView, Alert,
+  View,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  ImageBackground,
+  Keyboard,
+  TouchableWithoutFeedback,
+  PermissionsAndroid,
+  Platform,
+  ActivityIndicator,
+  ScrollView,
 } from 'react-native';
+import { Alert } from '../ui/AppAlert';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import type { RouteProp } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import Geolocation from '@react-native-community/geolocation';
 
-import IcoMoonIcon from '../icons/IcoMoonIcon';
+import AppIcon from '../icons/AppIcon';
 import { getSuggestions } from '../../services/suggestionService';
 import type { RootStackParamList } from '../../types/navigation';
 import { EstablishmentType, ESTABLISHMENT_LABELS } from '../../types/establishment';
+import { useI18n } from '../i18n/LocaleProvider';
+import { useResponsive } from '../utils/responsive';
 
 type BookingScreenRouteProp = RouteProp<RootStackParamList, 'Booking'>;
 type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
@@ -24,8 +36,10 @@ const BookingScreen: React.FC = () => {
 
   const route = useRoute<BookingScreenRouteProp>();
   const navigation = useNavigation<NavigationProp>();
+  const { t } = useI18n();
+  const { scale } = useResponsive();
   const { background, type } = route.params; // 🔴 use enum
-  const typeLabel = ESTABLISHMENT_LABELS[type];
+  const typeLabel = t(ESTABLISHMENT_LABELS[type]);
 
   const suggestions = getSuggestions(query);
 
@@ -34,10 +48,10 @@ const BookingScreen: React.FC = () => {
       const granted = await PermissionsAndroid.request(
         PermissionsAndroid.PERMISSIONS.ACCESS_FINE_LOCATION,
         {
-          title: 'Permission de localisation',
-          message: 'Cette app a besoin de votre position pour trouver des endroits proches.',
-          buttonPositive: 'OK',
-          buttonNegative: 'Annuler',
+          title: t('search.locationTitle'),
+          message: t('search.locationMessage'),
+          buttonPositive: t('common.ok'),
+          buttonNegative: t('common.cancel'),
         }
       );
       return granted === PermissionsAndroid.RESULTS.GRANTED;
@@ -46,7 +60,7 @@ const BookingScreen: React.FC = () => {
   };
 
   const handleSelect = async (item: string) => {
-    const isNearby = item.trim().toLowerCase() === 'autour de moi';
+    const isNearby = item.trim().toLowerCase() === t('search.nearby').toLowerCase();
     setQuery(item);
     setShowSuggestions(false);
 
@@ -66,7 +80,7 @@ const BookingScreen: React.FC = () => {
         },
         () => {
           setLoadingLocation(false);
-          Alert.alert('Localisation', 'Erreur lors de la récupération de votre position.');
+          Alert.alert(t('search.location'), t('search.locationError'));
         },
         { enableHighAccuracy: true, timeout: 15000, maximumAge: 10000 }
       );
@@ -89,18 +103,18 @@ const BookingScreen: React.FC = () => {
         
 
           <Text className="text-2xl text-white font-bold text-center mb-3.5"
-          style={{ fontSize:32 }}
-          >Book ta réza</Text>
+          style={{ fontSize: scale(32) }}
+          >{t('search.title')}</Text>
 
           <View
             className="flex-row items-center mb-3.5"
             style={{ gap: 10 }}
           >
-            {['Simple', 'Immédiat', '24h/24'].map((label, index, arr) => (
+            {[t('search.simple'), t('search.instant'), t('search.allDay')].map((label, index, arr) => (
               <React.Fragment key={label}>
                 <Text
                   className="text-white font-light italic"
-                  style={{ fontSize: 16 }}
+                  style={{ fontSize: scale(16) }}
                 >
                   {label}
                 </Text>
@@ -120,7 +134,7 @@ const BookingScreen: React.FC = () => {
             
             >
               <TextInput
-                placeholder="Nom du restaurant, Type ..."
+                placeholder={t('search.placeholder')}
                 placeholderTextColor="#555555ff"
                 className="text-base flex-1 italic text-black"
                 value={query}
@@ -137,7 +151,7 @@ const BookingScreen: React.FC = () => {
                   disabled={!isSearchable}
                   style={{ opacity: isSearchable ? 1 : 0.3 }}
                 >
-                  <IcoMoonIcon name="search" size={38} />
+                  <AppIcon name="search" size={38} />
                 </TouchableOpacity>
               )}
             </View>
@@ -162,14 +176,14 @@ const BookingScreen: React.FC = () => {
 
                 >
                   {suggestions.map((item, index) => {
-                    const isNearby = item.toLowerCase() === 'autour de moi';
+                    const isNearby = item.toLowerCase() === t('search.nearby').toLowerCase();
                     return (
                       <TouchableOpacity
                         key={`${item}-${index}`}
                         className="flex-row items-center gap-2.5 py-3"
                         onPress={() => handleSelect(item)}
                       >
-                        <IcoMoonIcon name={isNearby ? 'location' : 'search'} size={22} color="#111" />
+                        <AppIcon name={isNearby ? 'location' : 'search'} size={22} color="#111" />
                         <Text className={`text-base ${isNearby ? 'font-normal' : 'font-semibold'} text-black`}>
                           {item}
                         </Text>

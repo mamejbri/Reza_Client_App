@@ -1,6 +1,8 @@
 import React, { useMemo } from 'react';
-import { View, Text, Image, ScrollView } from 'react-native';
-import IcoMoonIcon from '../src/icons/IcoMoonIcon';
+import { View, Text, Image, ScrollView, StyleSheet } from 'react-native';
+import AppIcon from '../src/icons/AppIcon';
+import { useI18n } from '../src/i18n/LocaleProvider';
+import { useResponsive } from '../src/utils/responsive';
 
 type OpeningHoursLike = {
   day?: string | { name?: string } | any;
@@ -111,82 +113,127 @@ const composeRowRanges = (r: NormHours): string | null => {
   return parts.join(', ');
 };
 
-const DAY_LABEL = (d?: string) => {
+const DAY_LABEL = (t: (key: string) => string, d?: string) => {
   const up = (d ?? '').toUpperCase();
-  switch (up) {
-    case 'MONDAY': return 'Lundi';
-    case 'TUESDAY': return 'Mardi';
-    case 'WEDNESDAY': return 'Mercredi';
-    case 'THURSDAY': return 'Jeudi';
-    case 'FRIDAY': return 'Vendredi';
-    case 'SATURDAY': return 'Samedi';
-    case 'SUNDAY': return 'Dimanche';
-    default: return d ?? '';
-  }
+  return (WEEK_ORDER as readonly string[]).includes(up) ? t(`days.${up}`) : d ?? '';
 };
 
 /* ---------------- component ---------------- */
 
 const AboutSection: React.FC<Props> = ({ images, description, openingHours }) => {
   const hours = useMemo(() => normalizeAll(openingHours), [openingHours]);
+  const { t } = useI18n();
+  const { contentWidth } = useResponsive();
+  // one photo ≈ the content width (minus page padding) so the next one peeks in
+  const photoWidth = Math.round(contentWidth * 0.8);
+  // getDay(): 0 = Sunday … 6 = Saturday; WEEK_ORDER starts on Monday
+  const today = WEEK_ORDER[(new Date().getDay() + 6) % 7];
 
   return (
-    <View className="pb-4">
+    <View style={{ paddingBottom: 16 }}>
       {/* Gallery */}
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} className="flex-row mb-9">
-        {images.map((img) => (
-          <Image
-            key={img}
-            source={{ uri: img }}
-            className="w-[335] h-[195] rounded-xl mr-4"
-            resizeMode="cover"
-          />
-        ))}
-      </ScrollView>
+      {images.length > 0 && (
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          snapToInterval={photoWidth + 12}
+          decelerationRate="fast"
+          contentContainerStyle={{ gap: 12 }}
+          style={{ marginBottom: 20 }}
+        >
+          {images.map((img) => (
+            <Image
+              key={img}
+              source={{ uri: img }}
+              style={[styles.photo, { width: photoWidth, height: Math.round(photoWidth * 0.62) }]}
+              resizeMode="cover"
+            />
+          ))}
+        </ScrollView>
+      )}
 
-      <Text className="text-lg font-semibold pl-1 mb-3">À propos de nous</Text>
+      {/* About */}
+      <View style={styles.card}>
+        <Text style={styles.cardTitle}>{t('about.title')}</Text>
+        {description?.length > 0 ? (
+          <Text style={styles.description}>{description}</Text>
+        ) : (
+          <Text style={styles.muted}>{t('about.noDescription')}</Text>
+        )}
+      </View>
 
-      {/* Horaires */}
-      <View className="rounded-2xl bg-gray-100 px-3 py-3 bg-white mb-6">
-        <View className="flex-row items-center mb-2">
-          <IcoMoonIcon name="time" size={18} color="#C53334" />
-          <Text className="ml-2 font-semibold text-[14px]">Horaires</Text>
+      {/* Opening hours */}
+      <View style={styles.card}>
+        <View style={styles.cardHeader}>
+          <View style={styles.cardIcon}>
+            <AppIcon name="time" size={18} color={BRAND} />
+          </View>
+          <Text style={styles.cardTitle}>{t('about.hours')}</Text>
         </View>
 
         {hours.length > 0 ? (
-          <View className="gap-2">
+          <View>
             {hours.map((row, idx) => {
               const label = composeRowRanges(row);
+              const isToday = (row.day ?? '').toUpperCase() === today;
               return (
-                <View key={`oh-${idx}`} className="flex-row justify-between">
-                  <Text className="text-[12px] text-base font-bold text-gray-800">
-                    {DAY_LABEL(row.day)}
-                  </Text>
-                  <Text className="text-[12px] text-base font-bold">
-                    {label ?? 'Fermé'}
+                <View
+                  key={`oh-${idx}`}
+                  style={[styles.hourRow, idx > 0 && styles.hourRowBorder, isToday && styles.hourRowToday]}
+                >
+                  <Text style={[styles.day, isToday && styles.today]}>{DAY_LABEL(t, row.day)}</Text>
+                  <Text style={[styles.hours, !label && styles.closed, isToday && styles.today]}>
+                    {label ?? t('about.closed')}
                   </Text>
                 </View>
               );
             })}
           </View>
         ) : (
-          <Text className="text-[12px] text-gray-500">Horaires non renseignés.</Text>
+          <Text style={styles.muted}>{t('about.noHours')}</Text>
         )}
       </View>
-
-      {/* About */}
-      {description?.length > 0 ? (
-        <Text className="text-base font-bold">{description}</Text>
-      ) : (
-        <Text
-          className="text-[12px] text-gray-500 rounded-xl bg-[#F3F4F6]"
-          style={{ height: 50, paddingLeft: 8, paddingTop: 18 }}
-        >
-          Description non renseignée.
-        </Text>
-      )}
     </View>
   );
 };
+
+const BRAND = '#C53334';
+const INK = '#16120F';
+const MUTED = '#8A8580';
+
+const styles = StyleSheet.create({
+  photo: { borderRadius: 18, backgroundColor: '#ECE9E5' },
+  card: {
+    padding: 18,
+    marginBottom: 14,
+    borderRadius: 20,
+    backgroundColor: '#FFFFFF',
+    gap: 10,
+    shadowColor: '#000',
+    shadowOpacity: 0.06,
+    shadowRadius: 12,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 2,
+  },
+  cardHeader: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  cardIcon: {
+    width: 34,
+    height: 34,
+    borderRadius: 10,
+    backgroundColor: 'rgba(197,51,52,0.1)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  cardTitle: { fontSize: 17, fontWeight: '800', color: INK },
+  description: { fontSize: 15, lineHeight: 23, color: '#3A3530' },
+  muted: { fontSize: 14, color: MUTED },
+  hourRow: { flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 10, paddingHorizontal: 8 },
+  hourRowBorder: { borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: 'rgba(0,0,0,0.08)' },
+  hourRowToday: { backgroundColor: 'rgba(197,51,52,0.07)', borderRadius: 10, borderTopColor: 'transparent' },
+  day: { fontSize: 15, color: INK, fontWeight: '500' },
+  hours: { fontSize: 15, color: INK, fontWeight: '600' },
+  closed: { color: MUTED, fontWeight: '500' },
+  today: { color: BRAND, fontWeight: '800' },
+});
 
 export default AboutSection;

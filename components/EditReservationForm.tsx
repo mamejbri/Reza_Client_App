@@ -5,14 +5,18 @@ import {
   Text,
   TouchableOpacity,
   ScrollView,
-  Alert,
   ActivityIndicator,
   Modal,
+  Pressable,
+  StyleSheet,
+  I18nManager,
 } from 'react-native';
+import { Alert } from '../src/ui/AppAlert';
 import dayjs from 'dayjs';
-import 'dayjs/locale/fr';
 import CustomCalendarModal from './CustomCalendarModal';
-import { isoToFrDisplay } from '../utils/date';
+import { isoToFrDisplay, formatDuration } from '../utils/date';
+import AppIcon from '../src/icons/AppIcon';
+import { AuthButton } from '../src/ui/AuthKit';
 import { getCurrentUser } from '../services/user';
 import { EstablishmentType } from '../types/establishment';
 import {
@@ -22,9 +26,11 @@ import {
   Prestation,
 } from '../services/prestations';
 import { fetchPrestationAvailability } from '../services/availability';
-import { red } from 'react-native-reanimated/lib/typescript/Colors';
-
-dayjs.locale('fr');
+import { useI18n } from '../src/i18n/LocaleProvider';
+import { useNavigation } from '@react-navigation/native';
+import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import type { RootStackParamList } from '../types/navigation';
+import { getStoredClientId } from '../src/api/auth';
 
 type OpeningHoursLike = {
   day?: string | { name?: string } | any;
@@ -48,14 +54,27 @@ interface Props {
   availableSlots: Record<string, { time: string; reserved_by: string | null }[]>; // legacy / compat
   initialProgramId?: string;
   openingHours?: OpeningHoursLike[];
+  /** Resolve to 'SLOT_TAKEN' when the slot was taken meanwhile: the form clears the time and reloads slots. */
   onConfirm: (
     people: number | undefined,
     dateISO: string,
     time: string,
     programId?: string,
     clientId?: number
-  ) => Promise<void>;
+  ) => Promise<void | 'SLOT_TAKEN'>;
   onPartySizeChange?: (people: number) => void;
+  /**
+   * SPA multi-prestation cart: the first item locks the visit date/time,
+   * later items reuse it. Each prestation in the cart produces a separate reservation
+   * with sequentially computed start times.
+   */
+  enableCart?: boolean;
+  onConfirmCart?: (
+    cartItems: Prestation[],
+    dateISO: string,
+    time: string,
+    clientId: number
+  ) => Promise<void | 'SLOT_TAKEN'>;
 }
 
 /* ---------------- time helpers (15-min step) ---------------- */
@@ -129,7 +148,11 @@ const EditReservationForm: React.FC<Props> = ({
   onConfirm,
   clientId: clientIdProp,
   onPartySizeChange,
+  enableCart,
+  onConfirmCart,
 }) => {
+  const { t, formatMoney, formatDate } = useI18n();
+  const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const [people, setPeople] = useState<number>(initialPeople ?? 2);
   const [dateISO, setDateISO] = useState<string>(initialDateISO);
   const [time, setTime] = useState<string>(initialTime);
@@ -151,9 +174,17 @@ const EditReservationForm: React.FC<Props> = ({
   // ⬇️ NEW: server slots from /availability (used for non-restaurant)
   const [serverSlots, setServerSlots] = useState<string[]>([]);
   const [availLoading, setAvailLoading] = useState(false);
+  // bumped to re-fetch availability after a slot conflict
+  const [slotsReloadKey, setSlotsReloadKey] = useState(0);
 
   // modal to pick time
   const [showTimeModal, setShowTimeModal] = useState(false);
+
+  // SPA cart: items share the visit date/time locked by the first one
+  const [cartItems, setCartItems] = useState<Prestation[]>([]);
+  const [cartDate, setCartDate] = useState('');
+  const [cartTime, setCartTime] = useState('');
+  const [showCart, setShowCart] = useState(false);
 
   /* ---------- people ---------- */
   const setPeopleAndEmit = (val: number) => {
@@ -355,7 +386,7 @@ const EditReservationForm: React.FC<Props> = ({
     return () => {
       mounted = false;
     };
-  }, [isOther, selectedProgramId, etablissementId, dateISO]);
+  }, [isOther, selectedProgramId, etablissementId, dateISO, slotsReloadKey]);
 
   // base slots:
   // - RESTAURANT: openingHours or legacy availableSlots
@@ -421,201 +452,400 @@ const finalTimeList: string[] = useMemo(() => {
     setShowTimeModal(false);
   };
 
+  /**
+   * Client id for booking. Re-reads storage (the user may have logged in since this screen
+   * opened); when nobody is logged in, offers to go to the login screen instead of failing silently.
+   */
+  const ensureClient = async (): Promise<number | undefined> => {
+    if (finalClientId) return finalClientId;
+    const stored = await getStoredClientId();
+    if (typeof stored === 'number' && stored > 0) {
+      setResolvedClientId(stored);
+      return stored;
+    }
+    Alert.alert(t('booking.loginRequiredTitle'), t('booking.loginRequired'), [
+      { text: t('common.cancel'), style: 'cancel' },
+      { text: t('auth.login'), onPress: () => navigation.navigate('Login') },
+    ]);
+    return undefined;
+  };
+
   const onConfirmPress = async () => {
     if (!time) return;
     if (!isRestaurant && !selectedProgramId) return;
-    if (!finalClientId) {
-      Alert.alert('Session requise', 'Veuillez vous reconnecter.');
-      return;
-    }
+    const cid = await ensureClient();
+    if (!cid) return;
     setIsSaving(true);
     try {
-      await onConfirm(
+      const outcome = await onConfirm(
         isRestaurant ? people : undefined,
         dateISO,
         time,
         selectedProgramId ?? undefined,
-        finalClientId
+        cid
       );
+      if (outcome === 'SLOT_TAKEN') {
+        setTime('');
+        setSlotsReloadKey((k) => k + 1);
+      }
     } finally {
       setIsSaving(false);
     }
   };
 
-  const canSubmit = !!finalClientId && !!time && (isRestaurant || !!selectedProgramId);
+  const canSubmit = !!time && (isRestaurant || !!selectedProgramId);
+
+  /* ---------- SPA cart ---------- */
+  const cartMode = !!enableCart && !isRestaurant && typeof onConfirmCart === 'function';
+  const cartLocked = cartMode && cartItems.length > 0;
+  const allPrestations = useMemo(() => Object.values(prestationsByCat).flat(), [prestationsByCat]);
+  const selectedPrestation = allPrestations.find((p) => String(p.id) === selectedProgramId) ?? null;
+  const isInCart = (id: number) => cartItems.some((p) => p.id === id);
+  const cartTotalMinutes = cartItems.reduce((sum, p) => sum + (p.durationMinutes ?? 0), 0);
+  // the first item needs a chosen time; later items reuse the locked visit time
+  const canAddToCart =
+    cartMode && !!selectedPrestation && !isInCart(selectedPrestation.id) && (cartLocked || !!time);
+
+  const addToCart = () => {
+    if (!canAddToCart || !selectedPrestation) return;
+    if (!cartLocked) {
+      setCartDate(dateISO);
+      setCartTime(time);
+    }
+    setCartItems([...cartItems, selectedPrestation]);
+    setSelectedProgramId(null);
+    setTime('');
+  };
+
+  /** Removing the last item unlocks the visit date/time again. */
+  const removeFromCart = (id: number) => {
+    const next = cartItems.filter((p) => p.id !== id);
+    setCartItems(next);
+    if (next.length === 0) {
+      setDateISO(cartDate || dateISO);
+      setTime(cartTime);
+      setCartDate('');
+      setCartTime('');
+    }
+  };
+
+  const editCartItem = (p: Prestation) => {
+    removeFromCart(p.id);
+    setSelectedProgramId(String(p.id));
+    setShowCart(false);
+  };
+
+  const confirmCart = async () => {
+    if (!onConfirmCart || cartItems.length === 0 || !cartDate || !cartTime) return;
+    const cid = await ensureClient();
+    if (!cid) return;
+    setIsSaving(true);
+    try {
+      const outcome = await onConfirmCart(cartItems, cartDate, cartTime, cid);
+      if (outcome === 'SLOT_TAKEN') {
+        // The visit time is gone: unlock it and reselect the first item so new times load.
+        const first = cartItems[0];
+        setCartItems([]);
+        setDateISO(cartDate);
+        setCartDate('');
+        setCartTime('');
+        setTime('');
+        setSelectedProgramId(String(first.id));
+        setSlotsReloadKey((k) => k + 1);
+      }
+      setShowCart(false);
+    } finally {
+      setIsSaving(false);
+    }
+  };
 
   /* ---------------- render ---------------- */
+  const showDateTime = ((!isRestaurant && selectedProgramId) || isRestaurant) && !cartLocked;
+  const dateLabel = (() => {
+    const today = dayjs().format('YYYY-MM-DD');
+    const base = isoToFrDisplay(dateISO);
+    return dateISO === today ? t('booking.today', { date: base }) : base;
+  })();
+  const chevron = I18nManager.isRTL ? 'chevron-back' : 'chevron-forward';
+
+  const renderSlot = (slot: string, keyPrefix: string) => {
+    const enabled = isChipEnabled(slot);
+    const active = enabled && slot === time;
+    return (
+      <TouchableOpacity
+        key={`${keyPrefix}-${slot}`}
+        onPress={() => onSelectTime(slot)}
+        activeOpacity={enabled ? 0.85 : 1}
+        style={[styles.slot, active && styles.slotActive, !enabled && styles.slotDisabled]}
+      >
+        <Text style={[styles.slotText, active && styles.slotTextActive, !enabled && styles.slotTextDisabled]}>
+          {slot}
+        </Text>
+      </TouchableOpacity>
+    );
+  };
+
   return (
-    <ScrollView className="mt-6 bg-[#F3F3F3] rounded-2xl" keyboardShouldPersistTaps="handled" 
-    style={{padding:12}}
-    >
-              <Text className="text-base font-semibold mb-3">Je réserve ma place</Text>
-      <View className="rounded-2xl p-4 mb-4">
-
-        {/* Restaurant flow */}
-        {isRestaurant && (
-          <View className=" rounded-2xl p-3 mb-3">
-            <View className="flex-row items-center justify-between px-2 py-2 bg-[#F3F3F3] rounded-2xl">
-
-  {/* Texte à gauche */}
-  <Text className="text-base font-semibold flex-1">
-    Nombre de personnes :
-  </Text>
-
-  {/* Bouton - */}
-  <TouchableOpacity
-    onPress={() => setPeopleAndEmit((people ?? 1) - 1)}
-    className="w-10 h-10 rounded-full items-center justify-center"
-    style={{ backgroundColor: '#C53334' }}
-    activeOpacity={0.8}
-  >
-    <Text className="text-xl font-extrabold text-white">−</Text>
-  </TouchableOpacity>
-
-  {/* Nombre (fond blanc, pas arrondi) */}
-  <View className="px-4 py-1 bg-white mx-2">
-    <Text className="text-xl font-extrabold text-black">
-      {people ?? 1}
-    </Text>
-  </View>
-
-  {/* Bouton + */}
-  <TouchableOpacity
-    onPress={() => setPeopleAndEmit((people ?? 1) + 1)}
-    className="w-10 h-10 rounded-full items-center justify-center"
-    style={{ backgroundColor: '#C53334' }}
-    activeOpacity={0.8}
-  >
-    <Text className="text-xl font-extrabold text-white">+</Text>
-  </TouchableOpacity>
-</View>
-
-          </View>
-        )}
-
-        {/* Non-restaurant flow */}
-        {!isRestaurant && (
-          <View className="bg-white rounded-2xl p-3 mb-3">
-            {loadingCat && <ActivityIndicator size="small" color="#C53334" />}
-
-            {!loadingCat && categories.length === 0 && (
-              <Text className="text-sm text-gray-600 italic">
-                Cet établissement n’a pas encore créé de catégories.
-              </Text>
+    <View style={styles.container}>
+      <View style={styles.header}>
+        <Text style={styles.title}>{t('booking.title')}</Text>
+        {cartMode && (
+          <TouchableOpacity
+            onPress={() => setShowCart(true)}
+            accessibilityLabel={t('booking.viewCart')}
+            style={styles.cartPill}
+            activeOpacity={0.8}
+          >
+            <AppIcon name="bag-handle-outline" size={16} color={INK} />
+            <Text style={styles.cartPillText}>{t('booking.cart')}</Text>
+            {cartItems.length > 0 && (
+              <View style={styles.badge}>
+                <Text style={styles.badgeText}>{cartItems.length}</Text>
+              </View>
             )}
+          </TouchableOpacity>
+        )}
+      </View>
 
-            {categories.map((cat) => (
-              <View key={cat.id} className="mb-3">
+      {/* Restaurant flow: party size */}
+      {isRestaurant && (
+        <View style={styles.row}>
+          <View style={styles.rowIcon}>
+            <AppIcon name="people-outline" size={20} color={BRAND} />
+          </View>
+          <Text style={[styles.rowValue, { flex: 1 }]}>{t('booking.people')}</Text>
+          <View style={styles.stepper}>
+            <TouchableOpacity
+              onPress={() => setPeopleAndEmit((people ?? 1) - 1)}
+              style={[styles.stepButton, (people ?? 1) <= 1 && styles.stepButtonDisabled]}
+              activeOpacity={0.8}
+              accessibilityRole="button"
+            >
+              <AppIcon name="remove" size={18} color={(people ?? 1) <= 1 ? '#BDB7B0' : INK} />
+            </TouchableOpacity>
+            <Text style={styles.stepValue}>{people ?? 1}</Text>
+            <TouchableOpacity
+              onPress={() => setPeopleAndEmit((people ?? 1) + 1)}
+              style={[styles.stepButton, styles.stepButtonPlus]}
+              activeOpacity={0.8}
+              accessibilityRole="button"
+            >
+              <AppIcon name="add" size={18} color="#fff" />
+            </TouchableOpacity>
+          </View>
+        </View>
+      )}
+
+      {/* Non-restaurant flow: categories / services */}
+      {!isRestaurant && (
+        <View style={{ gap: 10 }}>
+          {loadingCat && <ActivityIndicator size="small" color={BRAND} />}
+
+          {!loadingCat && categories.length === 0 && (
+            <Text style={styles.muted}>{t('booking.noCategories')}</Text>
+          )}
+
+          {categories.map((cat) => {
+            const open = expandedCategoryId === cat.id;
+            return (
+              <View key={cat.id} style={[styles.category, open && styles.categoryOpen]}>
                 <TouchableOpacity
                   onPress={() => handleExpandCategory(cat.id)}
-                  className="bg-[#F3F3F3] rounded-xl p-3"
+                  activeOpacity={0.8}
+                  style={styles.categoryHeader}
                 >
-                  <Text className="text-base font-semibold">{cat.nom}</Text>
+                  <Text style={styles.categoryTitle}>{cat.nom}</Text>
+                  <AppIcon name={open ? 'chevron-up' : 'chevron-down'} size={18} color={open ? BRAND : MUTED} />
                 </TouchableOpacity>
 
-                {expandedCategoryId === cat.id && (
-                  <View className="mt-2 pl-4">
+                {open && (
+                  <View style={styles.services}>
                     {loadingPrestations === cat.id ? (
-                      <ActivityIndicator size="small" color="#C53334" />
+                      <ActivityIndicator size="small" color={BRAND} />
                     ) : (prestationsByCat[cat.id] ?? []).length === 0 ? (
-                      <Text className="text-sm text-gray-600 italic">
-                        Cette catégorie n’a encore aucune prestation.
-                      </Text>
+                      <Text style={styles.muted}>{t('booking.noPrestations')}</Text>
                     ) : (
-                      (prestationsByCat[cat.id] ?? []).map((p) => (
-                        <View key={p.id} className="bg-[#F3F3F3] rounded-xl  p-3 mb-2 shadow-sm">
+                      (prestationsByCat[cat.id] ?? []).map((p) => {
+                        const selected = selectedProgramId === String(p.id);
+                        return (
                           <TouchableOpacity
-                            onPress={() =>
-                              setSelectedProgramId(
-                                selectedProgramId === String(p.id) ? null : String(p.id)
-                              )
-                            }
+                            key={p.id}
+                            activeOpacity={0.85}
+                            onPress={() => setSelectedProgramId(selected ? null : String(p.id))}
+                            style={[styles.service, selected && styles.serviceSelected]}
                           >
-                            <Text className="font-medium text-base">{p.nom}</Text>
-                          </TouchableOpacity>
-                          {selectedProgramId === String(p.id) && (
-                            <View className="mt-2">
-                              <Text className="text-sm text-gray-600">{p.description}</Text>
-                              <Text className="text-sm font-medium mt-1">
-                                {p.prixFixe ?? p.prixMin ?? 0} MAD • {p.durationMinutes} min
-                              </Text>
+                            <View style={[styles.radio, selected && styles.radioOn]}>
+                              {selected && <View style={styles.radioDot} />}
                             </View>
-                          )}
-                        </View>
-                      ))
+                            <View style={{ flex: 1 }}>
+                              <View style={styles.serviceTop}>
+                                <Text style={styles.serviceName}>{p.nom}</Text>
+                                {cartMode && isInCart(p.id) && (
+                                  <View style={styles.inCart}>
+                                    <AppIcon name="checkmark" size={12} color={BRAND} />
+                                    <Text style={styles.inCartText}>{t('booking.inCart')}</Text>
+                                  </View>
+                                )}
+                              </View>
+
+                              <View style={styles.serviceMeta}>
+                                {!!p.durationMinutes && (
+                                  <View style={styles.serviceMetaItem}>
+                                    <AppIcon name="time-outline" size={14} color={MUTED} />
+                                    <Text style={styles.serviceMetaText}>{formatDuration(p.durationMinutes)}</Text>
+                                  </View>
+                                )}
+                                <Text style={styles.servicePrice}>
+                                  {p.prixFixe !== null
+                                    ? formatMoney(p.prixFixe)
+                                    : p.prixMin !== null && p.prixMax !== null
+                                    ? t('booking.priceRange', { min: formatMoney(p.prixMin), max: formatMoney(p.prixMax) })
+                                    : t('booking.onQuote')}
+                                </Text>
+                              </View>
+
+                              {selected && !!p.description && (
+                                <Text style={styles.serviceDescription}>{p.description}</Text>
+                              )}
+                            </View>
+                          </TouchableOpacity>
+                        );
+                      })
                     )}
                   </View>
                 )}
               </View>
-            ))}
+            );
+          })}
+        </View>
+      )}
+
+      {/* Visit time locked by the first cart item */}
+      {cartLocked && (
+        <View style={styles.locked}>
+          <AppIcon name="lock-closed-outline" size={16} color={BRAND} />
+          <Text style={styles.lockedText}>
+            {t('booking.visitAt', { date: formatDate(cartDate), time: cartTime })}
+          </Text>
+        </View>
+      )}
+
+      {/* Date */}
+      {showDateTime && (
+        <TouchableOpacity onPress={() => setShowCal(true)} activeOpacity={0.85} style={styles.row}>
+          <View style={styles.rowIcon}>
+            <AppIcon name="calendar-outline" size={20} color={BRAND} />
           </View>
-        )}
-
-        {/* Date */}
-        {((!isRestaurant && selectedProgramId) || isRestaurant) && (
-  <View className="bg-white rounded-2xl p-3 mb-3">
-    <Text className="text-base font-semibold mb-2">Pour le</Text>
-
-    <TouchableOpacity
-      onPress={() => setShowCal(true)}
-      className="bg-[#F3F3F3] rounded-2xl px-4 py-3 items-center justify-center"
-      activeOpacity={0.9}
-    >
-      <Text className="text-[15px] font-semibold text-center">
-        {(() => {
-          const today = dayjs().format('YYYY-MM-DD');
-          const isToday = dateISO === today;
-          const base = isoToFrDisplay(dateISO);
-          return isToday ? `Aujourd’hui. ${base}` : base;
-        })()}
-      </Text>
-    </TouchableOpacity>
-  </View>
-)}
-
-
-        {/* Time picker button */}
-        {((!isRestaurant && selectedProgramId) || isRestaurant) && (
-          <View className="bg-[#F3F3F3] rounded-2xl p-3">
-            <View className="flex-row items-center justify-between mb-3">
-              <Text className="text-base font-medium">Heure</Text>
-              {availLoading && !isRestaurant && (
-                <Text className="text-xs text-gray-500">Vérification des disponibilités…</Text>
-              )}
-            </View>
-
-            {/* Current selection */}
-            {time ? (
-              <View className="mb-3 bg-[#F3F3F3] rounded-2xl px-4 py-3">
-                <Text className="text-[15px] font-medium">Heure sélectionnée : {time}</Text>
-              </View>
-            ) : (
-              <Text className="text-sm text-gray-500 mb-3">Aucune heure sélectionnée.</Text>
-            )}
-
-            <TouchableOpacity
-              onPress={() => setShowTimeModal(true)}
-              className="rounded-2xl bg-[#C53334] py-3 items-center"
-              activeOpacity={0.9}
-            >
-              <Text className="text-white text-base font-semibold">
-                {time ? 'Modifier le temps' : 'Sélectionner le temps'}
-              </Text>
-            </TouchableOpacity>
+          <View style={{ flex: 1 }}>
+            <Text style={styles.rowLabel}>{t('booking.forDate')}</Text>
+            <Text style={styles.rowValue}>{dateLabel}</Text>
           </View>
+          <AppIcon name={chevron} size={18} color={MUTED} />
+        </TouchableOpacity>
+      )}
+
+      {/* Time */}
+      {showDateTime && (
+        <TouchableOpacity onPress={() => setShowTimeModal(true)} activeOpacity={0.85} style={styles.row}>
+          <View style={styles.rowIcon}>
+            <AppIcon name="time-outline" size={20} color={BRAND} />
+          </View>
+          <View style={{ flex: 1 }}>
+            <Text style={styles.rowLabel}>
+              {t('booking.time')}
+              {availLoading && !isRestaurant ? `  ·  ${t('booking.checking')}` : ''}
+            </Text>
+            <Text style={[styles.rowValue, !time && styles.rowPlaceholder]}>
+              {time || t('booking.pickTime')}
+            </Text>
+          </View>
+          <AppIcon name={chevron} size={18} color={MUTED} />
+        </TouchableOpacity>
+      )}
+
+      {/* Confirm (or, for SPA, add to cart — the cart is confirmed from its sheet) */}
+      <View style={{ marginTop: 6 }}>
+        {cartMode ? (
+          <AuthButton label={t('booking.addToCart')} onPress={addToCart} disabled={!canAddToCart} />
+        ) : (
+          <AuthButton
+            label={t('booking.confirm')}
+            onPress={onConfirmPress}
+            disabled={!canSubmit}
+            loading={isSaving}
+          />
         )}
       </View>
 
-      {/* Confirm */}
-      <TouchableOpacity
-        onPress={onConfirmPress}
-        disabled={isSaving || !canSubmit}
-        className={`rounded-2xl bg-[#C53334] py-4 items-center mb-6 ${
-          isSaving || !canSubmit ? 'opacity-60' : ''
-        }`}
-      >
-        <Text className="text-white text-base font-semibold">Je confirme ma REZA</Text>
-      </TouchableOpacity>
+      {/* Cart sheet */}
+      <Modal visible={showCart} transparent animationType="slide" onRequestClose={() => setShowCart(false)}>
+        <View style={styles.backdrop}>
+          <Pressable style={StyleSheet.absoluteFill} onPress={() => setShowCart(false)} />
+          <View style={[styles.sheet, { maxHeight: '80%' }]}>
+            <View style={styles.handle} />
+            <View style={styles.sheetHeader}>
+              <Text style={styles.sheetTitle}>{t('booking.cart')}</Text>
+              <TouchableOpacity onPress={() => setShowCart(false)} hitSlop={10} accessibilityLabel={t('common.close')}>
+                <AppIcon name="close" size={24} color={INK} />
+              </TouchableOpacity>
+            </View>
+
+            {cartItems.length === 0 ? (
+              <View style={styles.cartEmpty}>
+                <AppIcon name="bag-handle-outline" size={28} color={MUTED} />
+                <Text style={[styles.muted, { textAlign: 'center' }]}>{t('booking.cartEmpty')}</Text>
+              </View>
+            ) : (
+              <>
+                <View style={[styles.locked, { marginBottom: 12 }]}>
+                  <AppIcon name="time-outline" size={16} color={BRAND} />
+                  <Text style={styles.lockedText}>
+                    {t('booking.visitAt', { date: formatDate(cartDate), time: cartTime })}
+                  </Text>
+                </View>
+                <ScrollView style={{ marginBottom: 12 }}>
+                  {cartItems.map((p) => (
+                    <View key={p.id} style={styles.cartItem}>
+                      <View style={{ flex: 1 }}>
+                        <Text style={styles.serviceName}>{p.nom}</Text>
+                        <View style={[styles.serviceMetaItem, { marginTop: 4 }]}>
+                          <AppIcon name="time-outline" size={13} color={MUTED} />
+                          <Text style={styles.serviceMetaText}>
+                            {formatDuration(p.durationMinutes)}
+                            {p.prixFixe !== null ? ` • ${formatMoney(p.prixFixe)}` : ''}
+                          </Text>
+                        </View>
+                      </View>
+                      <View style={{ flexDirection: 'row', gap: 6 }}>
+                        <TouchableOpacity
+                          onPress={() => editCartItem(p)}
+                          accessibilityLabel={t('booking.editItem', { name: p.nom })}
+                          style={styles.iconButton}
+                        >
+                          <AppIcon name="create-outline" size={18} color={BRAND} />
+                        </TouchableOpacity>
+                        <TouchableOpacity
+                          onPress={() => removeFromCart(p.id)}
+                          accessibilityLabel={t('booking.removeItem', { name: p.nom })}
+                          style={styles.iconButton}
+                        >
+                          <AppIcon name="trash-outline" size={18} color={MUTED} />
+                        </TouchableOpacity>
+                      </View>
+                    </View>
+                  ))}
+                </ScrollView>
+                <View style={styles.totalRow}>
+                  <Text style={styles.totalText}>
+                    {t('booking.totalDuration', { n: formatDuration(cartTotalMinutes) })}
+                  </Text>
+                </View>
+                <AuthButton label={t('booking.confirmCart')} onPress={confirmCart} loading={isSaving} />
+              </>
+            )}
+          </View>
+        </View>
+      </Modal>
 
       {/* Calendar modal */}
       <CustomCalendarModal
@@ -637,164 +867,279 @@ const finalTimeList: string[] = useMemo(() => {
         transparent
         onRequestClose={() => setShowTimeModal(false)}
       >
-        <View className="flex-1 bg-black/40 justify-end"
-        
-        >
-<View
-  className="bg-white rounded-t-2xl p-4"
-  style={{
-    maxHeight: '75%',
-    width: '100%',
-    padding: 20,
-    flexShrink: 1,
-    flexGrow: 0,
-  }}
->
-            <View className="items-center mb-2">
-              <View className="w-12 h-1.5 bg-gray-300 rounded-full" />
+        <View style={styles.backdrop}>
+          <Pressable style={StyleSheet.absoluteFill} onPress={() => setShowTimeModal(false)} />
+          <View style={[styles.sheet, { maxHeight: '78%' }]}>
+            <View style={styles.handle} />
+
+            <View style={styles.sheetHeader}>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.sheetTitle}>{t('booking.pickSlot')}</Text>
+                <Text style={styles.sheetSubtitle} numberOfLines={1}>
+                  {isoToFrDisplay(dateISO)}
+                  {selectedProgram ? ` • ${selectedProgram.nom}` : ''}
+                </Text>
+              </View>
+              <TouchableOpacity onPress={() => setShowTimeModal(false)} hitSlop={10} accessibilityLabel={t('common.close')}>
+                <AppIcon name="close" size={24} color={INK} />
+              </TouchableOpacity>
             </View>
 
-            <Text className="text-lg font-semibold mb-2">Sélectionnez un horaire</Text>
-            <Text className="text-xs text-gray-500 mb-3">
-              {isoToFrDisplay(dateISO)}
-              {selectedProgram ? ` • ${selectedProgram.nom}` : ''}
-            </Text>
-
-            <ScrollView className="mb-3"
-            
-            >
+            <ScrollView style={{ marginBottom: 12 }}>
               {/* Morning / Afternoon sections or single list */}
               {showTwoSections ? (
                 <>
-                  <Text className="font-semibold mb-2">Matin</Text>
-                  <View className="flex-row flex-wrap gap-2 mb-4"
-                  >
+                  <View style={styles.slotSection}>
+                    <AppIcon name="sunny-outline" size={16} color={MUTED} />
+                    <Text style={styles.slotSectionTitle}>{t('booking.morning')}</Text>
+                  </View>
+                  <View style={styles.slots}>
                     {rangeStep(mo!, mc!, STEP_MIN)
-                      .filter((t) => finalTimeList.includes(t))
-                      .map((t) => {
-                        const enabled = isChipEnabled(t);
-                        const active = enabled && t === time;
-                        return (
-                          <TouchableOpacity
-                            key={`m-${t}`}
-                            onPress={() => onSelectTime(t)}
-                            activeOpacity={enabled ? 0.85 : 1}
-                            className={`px-4 py-2 rounded-full border ${
-                              active
-                                ? 'bg-[#C53334] border-[#C53334]'
-                                : enabled
-                                ? 'bg-white border-gray-300'
-                                : 'bg-gray-100 border-gray-200'
-                            }`}
-                            style={!enabled ? { opacity: 0.5 } : undefined}
-                          >
-                            <Text className={active ? 'text-white font-medium' : 'text-black font-medium'}>
-                              {t}
-                            </Text>
-                          </TouchableOpacity>
-                        );
-                      })}
-                    {rangeStep(mo!, mc!, STEP_MIN).filter((t) => finalTimeList.includes(t)).length === 0 && (
-                      <Text className="text-sm text-gray-500 italic">Pas de créneau le matin.</Text>
+                      .filter((s) => finalTimeList.includes(s))
+                      .map((s) => renderSlot(s, 'm'))}
+                    {rangeStep(mo!, mc!, STEP_MIN).filter((s) => finalTimeList.includes(s)).length === 0 && (
+                      <Text style={styles.muted}>{t('booking.noMorning')}</Text>
                     )}
                   </View>
 
-                  <Text className="font-semibold mb-2">Après-midi</Text>
-                  <View className="flex-row flex-wrap gap-2">
+                  <View style={styles.slotSection}>
+                    <AppIcon name="moon-outline" size={16} color={MUTED} />
+                    <Text style={styles.slotSectionTitle}>{t('booking.afternoon')}</Text>
+                  </View>
+                  <View style={styles.slots}>
                     {rangeStep(eo!, ec!, STEP_MIN)
-                      .filter((t) => finalTimeList.includes(t))
-                      .map((t) => {
-                        const enabled = isChipEnabled(t);
-                        const active = enabled && t === time;
-                        return (
-                          <TouchableOpacity
-                            key={`s-${t}`}
-                            onPress={() => onSelectTime(t)}
-                            activeOpacity={enabled ? 0.85 : 1}
-                            className={`px-4 py-2 rounded-full border ${
-                              active
-                                ? 'bg-[#C53334] border-[#C53334]'
-                                : enabled
-                                ? 'bg-white border-gray-300'
-                                : 'bg-gray-100 border-gray-200'
-                            }`}
-                            style={!enabled ? { opacity: 0.5 } : undefined}
-                          >
-                            <Text className={active ? 'text-white font-medium' : 'text-black font-medium'}>
-                              {t}
-                            </Text>
-                          </TouchableOpacity>
-                        );
-                      })}
-                    {rangeStep(eo!, ec!, STEP_MIN).filter((t) => finalTimeList.includes(t)).length === 0 && (
-                      <Text className="text-sm text-gray-500 italic">
-                        Pas de créneau l’après-midi.
-                      </Text>
+                      .filter((s) => finalTimeList.includes(s))
+                      .map((s) => renderSlot(s, 's'))}
+                    {rangeStep(eo!, ec!, STEP_MIN).filter((s) => finalTimeList.includes(s)).length === 0 && (
+                      <Text style={styles.muted}>{t('booking.noAfternoon')}</Text>
                     )}
                   </View>
                 </>
               ) : (
                 <>
-                  <Text className="font-semibold mb-2">Créneaux disponibles</Text>
-<View
-  className="flex-row flex-wrap gap-2"
-  style={{
-    justifyContent: "center",
-    alignItems: "center",
-    width: "100%",
-  }}>                    
-  {finalTimeList.map((t) => {
-                      const enabled = isChipEnabled(t);
-                      const active = enabled && t === time;
-                      return (
-                        <TouchableOpacity
-                          key={`one-${t}`}
-                          onPress={() => onSelectTime(t)}
-                          activeOpacity={enabled ? 0.85 : 1}
-                          className={`px-4 py-2 rounded-full border ${
-                            active
-                              ? 'bg-[#C53334] border-[#C53334]'
-                              : enabled
-                              ? 'bg-white border-gray-300'
-                              : 'bg-gray-100 border-gray-200'
-                          }`}
-                          style={!enabled ? { opacity: 0.5 } : undefined}
-                        >
-                          <Text className={active ? 'text-white font-medium' : 'text-black font-medium'}>
-                            {t}
-                          </Text>
-                        </TouchableOpacity>
-                      );
-                    })}
+                  <View style={styles.slotSection}>
+                    <Text style={styles.slotSectionTitle}>{t('booking.availableSlots')}</Text>
+                  </View>
+                  <View style={styles.slots}>
+                    {finalTimeList.map((s) => renderSlot(s, 'one'))}
                     {finalTimeList.length === 0 && (
-                      <Text className="text-sm text-gray-500 italic">Aucun créneau disponible.</Text>
+                      <Text style={styles.muted}>{t('booking.noSlots')}</Text>
                     )}
                   </View>
                 </>
               )}
             </ScrollView>
 
-            <View className="flex-row gap-3">
-              <TouchableOpacity
-                onPress={() => setShowTimeModal(false)}
-                className="flex-1 rounded-2xl bg-gray-200 py-3 items-center"
-              >
-                <Text className="text-black text-base font-semibold">Fermer</Text>
-              </TouchableOpacity>
-              {time ? (
-                <TouchableOpacity
-                  onPress={() => setShowTimeModal(false)}
-                  className="flex-1 rounded-2xl bg-[#C53334] py-3 items-center"
-                >
-                  <Text className="text-white text-base font-semibold">Valider</Text>
-                </TouchableOpacity>
-              ) : null}
-            </View>
+            <AuthButton
+              label={t('booking.validate')}
+              onPress={() => setShowTimeModal(false)}
+              disabled={!time}
+            />
           </View>
         </View>
       </Modal>
-    </ScrollView>
+    </View>
   );
 };
+
+const BRAND = '#C53334';
+const INK = '#16120F';
+const MUTED = '#8A8580';
+const SURFACE = '#F5F3F0';
+const BRAND_TINT = 'rgba(197,51,52,0.08)';
+
+const styles = StyleSheet.create({
+  container: {
+    padding: 18,
+    gap: 12,
+    borderRadius: 24,
+    backgroundColor: '#FFFFFF',
+    shadowColor: '#000',
+    shadowOpacity: 0.06,
+    shadowRadius: 14,
+    shadowOffset: { width: 0, height: 5 },
+    elevation: 2,
+  },
+  header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 },
+  title: { fontSize: 20, fontWeight: '800', color: INK, letterSpacing: -0.3, flexShrink: 1 },
+  cartPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingHorizontal: 12,
+    height: 36,
+    borderRadius: 18,
+    borderWidth: 1,
+    borderColor: '#E4E0DB',
+  },
+  cartPillText: { fontSize: 14, fontWeight: '600', color: INK },
+  badge: {
+    minWidth: 20,
+    height: 20,
+    paddingHorizontal: 5,
+    borderRadius: 10,
+    backgroundColor: BRAND,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  badgeText: { color: '#FFFFFF', fontSize: 12, fontWeight: '700' },
+
+  row: {
+    minHeight: 66,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    borderRadius: 18,
+    backgroundColor: SURFACE,
+  },
+  rowIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: 12,
+    backgroundColor: '#FFFFFF',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  rowLabel: { fontSize: 12, fontWeight: '600', color: MUTED, marginBottom: 2 },
+  rowValue: { fontSize: 16, fontWeight: '700', color: INK },
+  rowPlaceholder: { color: MUTED, fontWeight: '600' },
+
+  stepper: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+  stepButton: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    borderWidth: 1.5,
+    borderColor: '#D6D1CB',
+    backgroundColor: '#FFFFFF',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  stepButtonDisabled: { borderColor: '#E9E5E0' },
+  stepButtonPlus: { backgroundColor: BRAND, borderColor: BRAND },
+  stepValue: { minWidth: 24, textAlign: 'center', fontSize: 20, fontWeight: '800', color: INK },
+
+  category: { borderRadius: 18, backgroundColor: SURFACE, overflow: 'hidden' },
+  categoryOpen: { backgroundColor: '#FFFFFF', borderWidth: 1, borderColor: '#ECE8E3' },
+  categoryHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 16,
+    paddingVertical: 16,
+  },
+  categoryTitle: { flexShrink: 1, fontSize: 16, fontWeight: '700', color: INK },
+  services: { paddingHorizontal: 10, paddingBottom: 10, gap: 8 },
+  service: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 12,
+    padding: 14,
+    borderRadius: 14,
+    borderWidth: 1.5,
+    borderColor: '#ECE8E3',
+    backgroundColor: '#FFFFFF',
+  },
+  serviceSelected: { borderColor: BRAND, backgroundColor: BRAND_TINT },
+  radio: {
+    width: 20,
+    height: 20,
+    marginTop: 1,
+    borderRadius: 10,
+    borderWidth: 2,
+    borderColor: '#C9C4BE',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  radioOn: { borderColor: BRAND },
+  radioDot: { width: 10, height: 10, borderRadius: 5, backgroundColor: BRAND },
+  serviceTop: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 8 },
+  serviceName: { flexShrink: 1, fontSize: 15, fontWeight: '700', color: INK },
+  inCart: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 3,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 10,
+    backgroundColor: '#FFFFFF',
+  },
+  inCartText: { fontSize: 11, fontWeight: '700', color: BRAND },
+  serviceMeta: { flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: 12, marginTop: 6 },
+  serviceMetaItem: { flexDirection: 'row', alignItems: 'center', gap: 4 },
+  serviceMetaText: { fontSize: 13, color: MUTED },
+  servicePrice: { fontSize: 14, fontWeight: '700', color: INK },
+  serviceDescription: { marginTop: 8, fontSize: 13, lineHeight: 19, color: '#5A5550' },
+
+  locked: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    padding: 14,
+    borderRadius: 16,
+    backgroundColor: BRAND_TINT,
+  },
+  lockedText: { flexShrink: 1, fontSize: 15, fontWeight: '600', color: INK, textAlign: 'center' },
+
+  muted: { fontSize: 14, color: MUTED },
+
+  backdrop: { flex: 1, backgroundColor: 'rgba(12,8,6,0.45)', justifyContent: 'flex-end' },
+  sheet: {
+    width: '100%',
+    backgroundColor: '#FFFFFF',
+    borderTopLeftRadius: 28,
+    borderTopRightRadius: 28,
+    paddingHorizontal: 20,
+    paddingTop: 10,
+    paddingBottom: 32,
+  },
+  handle: { alignSelf: 'center', width: 40, height: 5, borderRadius: 3, backgroundColor: '#DDD8D2', marginBottom: 14 },
+  sheetHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12, marginBottom: 16 },
+  sheetTitle: { fontSize: 19, fontWeight: '800', color: INK },
+  sheetSubtitle: { marginTop: 2, fontSize: 13, color: MUTED },
+
+  slotSection: { flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 10, marginTop: 4 },
+  slotSectionTitle: { fontSize: 14, fontWeight: '700', color: MUTED, textTransform: 'uppercase', letterSpacing: 0.6 },
+  slots: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 16 },
+  slot: {
+    width: '23%',
+    flexGrow: 0,
+    paddingVertical: 11,
+    borderRadius: 12,
+    borderWidth: 1.5,
+    borderColor: '#E4E0DB',
+    backgroundColor: '#FFFFFF',
+    alignItems: 'center',
+  },
+  slotActive: { backgroundColor: BRAND, borderColor: BRAND },
+  slotDisabled: { backgroundColor: SURFACE, borderColor: SURFACE },
+  slotText: { fontSize: 15, fontWeight: '700', color: INK },
+  slotTextActive: { color: '#FFFFFF' },
+  slotTextDisabled: { color: '#BDB7B0', textDecorationLine: 'line-through' },
+
+  cartEmpty: { alignItems: 'center', gap: 10, paddingVertical: 24 },
+  cartItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    padding: 14,
+    marginBottom: 8,
+    borderRadius: 14,
+    backgroundColor: SURFACE,
+  },
+  iconButton: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: '#FFFFFF',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  totalRow: { paddingVertical: 4, marginBottom: 14 },
+  totalText: { fontSize: 15, fontWeight: '700', color: INK },
+});
 
 export default EditReservationForm;

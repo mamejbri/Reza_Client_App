@@ -1,5 +1,6 @@
 package com.rezavp
 
+import android.os.Bundle
 import com.facebook.react.ReactActivity
 import com.facebook.react.ReactActivityDelegate
 import com.facebook.react.defaults.DefaultNewArchitectureEntryPoint.fabricEnabled
@@ -12,6 +13,15 @@ class MainActivity : ReactActivity() {
    * rendering of the component.
    */
   override fun getMainComponentName(): String = "RezaVP"
+
+  /**
+   * react-native-screens can't restore its fragments: passing the saved state crashes the app when
+   * Android recreates the activity (display/density change, process restored from background).
+   * https://github.com/software-mansion/react-native-screens#android
+   */
+  override fun onCreate(savedInstanceState: Bundle?) {
+    super.onCreate(null)
+  }
 
   /**
    * Returns the instance of the [ReactActivityDelegate]. We use [DefaultReactActivityDelegate]

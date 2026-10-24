@@ -2,6 +2,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import http from '../src/api/http';
 import { API } from '../src/config/env';
+import { translate } from '../src/i18n/LocaleProvider';
 import { getToken, getStoredClientId, setStoredClientId } from '../src/api/auth';
 
 const USER_CACHE_KEY = 'currentUser';
@@ -43,14 +44,24 @@ function decodeJwtPayload(token: string): any | null {
   } catch { return null; }
 }
 
+function isTokenExpired(token: string): boolean {
+  const payload = decodeJwtPayload(token);
+  return typeof payload?.exp === 'number' && payload.exp * 1000 <= Date.now();
+}
+
 export async function getCurrentUser(forceRefresh = false): Promise<CurrentUser | null> {
+  // The token is the source of truth for "logged in" — never trust the cached user without it.
+  const token = await getToken();
+  if (!token || isTokenExpired(token)) {
+    try { await AsyncStorage.multiRemove(['token', 'clientId']); } catch {}
+    await clearCachedUser();
+    return null;
+  }
+
   if (!forceRefresh) {
     const cached = await readCachedUser();
     if (cached) return cached;
   }
-
-  const token = await getToken();
-  if (!token) { await clearCachedUser(); return null; }
 
   // Prefer backend
   for (const url of [`${API.BASE_URL}/clients/me`, `${API.BASE_URL}/users/me`]) {
@@ -90,5 +101,5 @@ export async function updateCurrentUser(patch: UpdateUserPayload): Promise<Updat
       return { success: true };
     } catch { /* next */ }
   }
-  return { success: false, message: 'Impossible de mettre à jour le profil.' };
+  return { success: false, message: translate('profile.saveError') };
 }
