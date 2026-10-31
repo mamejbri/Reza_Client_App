@@ -8,8 +8,6 @@ import {
   ImageBackground,
   Keyboard,
   TouchableWithoutFeedback,
-  PermissionsAndroid,
-  Platform,
   ActivityIndicator,
   ScrollView,
 } from 'react-native';
@@ -17,7 +15,6 @@ import { Alert } from '../ui/AppAlert';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import type { RouteProp } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import Geolocation from '@react-native-community/geolocation';
 
 import AppIcon from '../icons/AppIcon';
 import { getSuggestions } from '../../services/suggestionService';
@@ -25,6 +22,7 @@ import type { RootStackParamList } from '../../types/navigation';
 import { EstablishmentType, ESTABLISHMENT_LABELS } from '../../types/establishment';
 import { useI18n } from '../i18n/LocaleProvider';
 import { useResponsive } from '../utils/responsive';
+import { getCurrentCoords, requestLocationPermission } from '../utils/location';
 
 type BookingScreenRouteProp = RouteProp<RootStackParamList, 'Booking'>;
 type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
@@ -43,22 +41,6 @@ const BookingScreen: React.FC = () => {
 
   const suggestions = getSuggestions(query);
 
-  const requestLocationPermission = async () => {
-    if (Platform.OS === 'android') {
-      const granted = await PermissionsAndroid.request(
-        PermissionsAndroid.PERMISSIONS.ACCESS_FINE_LOCATION,
-        {
-          title: t('search.locationTitle'),
-          message: t('search.locationMessage'),
-          buttonPositive: t('common.ok'),
-          buttonNegative: t('common.cancel'),
-        }
-      );
-      return granted === PermissionsAndroid.RESULTS.GRANTED;
-    }
-    return true;
-  };
-
   const handleSelect = async (item: string) => {
     const isNearby = item.trim().toLowerCase() === t('search.nearby').toLowerCase();
     setQuery(item);
@@ -69,21 +51,16 @@ const BookingScreen: React.FC = () => {
       if (!permission) return;
 
       setLoadingLocation(true);
-      Geolocation.getCurrentPosition(
-        (position) => {
-          setLoadingLocation(false);
+      getCurrentCoords()
+        .then((coords) => {
           navigation.navigate('SearchResults', {
-            coords: { lat: position.coords.latitude, lng: position.coords.longitude },
+            coords,
             query: null,
             type, // 🔴 pass enum forward
           });
-        },
-        () => {
-          setLoadingLocation(false);
-          Alert.alert(t('search.location'), t('search.locationError'));
-        },
-        { enableHighAccuracy: true, timeout: 15000, maximumAge: 10000 }
-      );
+        })
+        .catch(() => Alert.alert(t('search.location'), t('search.locationError')))
+        .finally(() => setLoadingLocation(false));
     } else {
       navigation.navigate('SearchResults', {
         query: item,

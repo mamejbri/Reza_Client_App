@@ -38,6 +38,10 @@ photos?: {
     [key: string]: any;
   }[];
   address?: string | null;
+  latitude?: number | null;
+  longitude?: number | null;
+  /** Only set when the search was made with the client's position. */
+  distanceKm?: number | null;
   averageRating?: number | null;
   reviewCount?: number | null;
 

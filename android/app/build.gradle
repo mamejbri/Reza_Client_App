@@ -84,6 +84,11 @@ android {
         targetSdkVersion rootProject.ext.targetSdkVersion
         versionCode 1
         versionName "1.0"
+        // Google "Maps SDK for Android" key, kept out of git: set REZA_MAPS_API_KEY in
+        // ~/.gradle/gradle.properties or as an environment variable.
+        manifestPlaceholders = [
+            mapsApiKey: project.findProperty("REZA_MAPS_API_KEY") ?: System.getenv("REZA_MAPS_API_KEY") ?: ""
+        ]
     }
     signingConfigs {
         debug {

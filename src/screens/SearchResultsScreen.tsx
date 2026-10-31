@@ -1,8 +1,9 @@
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   View, Text, TouchableOpacity, FlatList, Pressable,
-  Image, ScrollView, Modal, TextInput, StyleSheet
+  Image, ScrollView, Modal, TextInput, StyleSheet, ActivityIndicator
 } from "react-native";
+import MapView, { Marker } from "react-native-maps";
 
 import { useNavigation, useRoute } from "@react-navigation/native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -28,6 +29,8 @@ import { ESTABLISHMENT_LABELS } from "../../types/establishment";
 import { API } from "../config/env";
 import { useI18n } from "../i18n/LocaleProvider";
 import { useResponsive, MAX_CONTENT_WIDTH, SCROLL_DECELERATION } from "../utils/responsive";
+import { Coords, getCurrentCoords, requestLocationPermission } from "../utils/location";
+import { Alert } from "../ui/AppAlert";
 
 const BRAND = "#C53334";
 const INK = "#16120F";
@@ -59,6 +62,12 @@ const GROUP_FIELD: Record<string, string> = {
   ACTIVITE: "activite",
   ENVIRONNEMENT: "environnement",
 };
+
+/** Centre of Morocco, shown when nothing on the map has coordinates. */
+const FALLBACK_REGION = { latitude: 31.8, longitude: -7.1, latitudeDelta: 8, longitudeDelta: 8 };
+const MAP_PADDING = { top: 60, right: 40, bottom: 60, left: 40 };
+
+const hasCoords = (e: EtablissementDTO) => e.latitude != null && e.longitude != null;
 
 const getFinalImage = (item: EtablissementDTO) => {
   if (item.imageUrl) return resolveImg(item.imageUrl);
@@ -121,6 +130,10 @@ const Card = ({ item, summary, onPress }: { item: EtablissementDTO; summary?: Su
           </View>
         )}
 
+        {item.distanceKm != null && (
+          <Text style={styles.cardDistance}>{t("results.distance", { km: item.distanceKm.toFixed(1) })}</Text>
+        )}
+
         <View style={styles.cardFooter}>
           <Text style={styles.cardReviews}>
             {hasRating ? t("common.reviews", { count }) : t("common.noReviews")}
@@ -173,6 +186,12 @@ export default function SearchResultsScreen() {
   const [query, setQuery] = useState((params.query ?? "").trim());
   const requestId = useRef(0);
 
+  // Client position while "near me" is on: results are then limited to the area and sorted nearest first.
+  const [origin, setOrigin] = useState<Coords | null>(params.coords ?? null);
+  const [locating, setLocating] = useState(false);
+  const [showMap, setShowMap] = useState(false);
+  const mapRef = useRef<MapView>(null);
+
   const clean = (v: string) => v.replace(/_/g, " ").replace(/\s+/g, " ").trim();
   /** Known filter groups get a translated label; unknown ones fall back to the cleaned code. */
   const groupLabel = (group: string) => {
@@ -200,7 +219,7 @@ export default function SearchResultsScreen() {
   }, [type]);
 
   useEffect(() => {
-    const payload: any = { text: query || undefined, type };
+    const payload: any = { text: query || undefined, type, lat: origin?.lat, lng: origin?.lng };
     Object.values(GROUP_FIELD).forEach((field) => { payload[field] = []; });
     selectedFilters.forEach((id) => {
       const g = filterGroups.find((g) => g.options.some((o: FilterOption) => o.id === id));
@@ -226,7 +245,7 @@ export default function SearchResultsScreen() {
       .finally(() => { if (id === requestId.current) setLoading(false); });
     // filterGroups is only read to map ids -> groups; ids can only be selected once groups are loaded.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [query, selectedFilters, type]);
+  }, [query, selectedFilters, type, origin]);
 
   useEffect(() => {
     if (!etabs.length) return;
@@ -240,6 +259,47 @@ export default function SearchResultsScreen() {
     });
     return () => { cancelled = true; };
   }, [etabs]);
+
+  /******************************************************
+   * LOCATION & MAP
+   ******************************************************/
+  const toggleNearMe = async () => {
+    if (origin) {
+      setOrigin(null);
+      return;
+    }
+    if (!(await requestLocationPermission())) return;
+    setLocating(true);
+    getCurrentCoords()
+      .then(setOrigin)
+      .catch(() => Alert.alert(t("search.location"), t("search.locationError")))
+      .finally(() => setLocating(false));
+  };
+
+  const mappable = useMemo(() => etabs.filter(hasCoords), [etabs]);
+
+  const fitMap = useCallback(() => {
+    const points = mappable.map((e) => ({ latitude: e.latitude!, longitude: e.longitude! }));
+    if (origin) points.push({ latitude: origin.lat, longitude: origin.lng });
+    if (points.length === 1) {
+      mapRef.current?.animateToRegion({ ...points[0], latitudeDelta: 0.03, longitudeDelta: 0.03 });
+    } else if (points.length > 1) {
+      mapRef.current?.fitToCoordinates(points, { edgePadding: MAP_PADDING, animated: true });
+    }
+  }, [mappable, origin]);
+
+  useEffect(() => {
+    if (showMap) fitMap();
+  }, [showMap, fitMap]);
+
+  const openEstablishment = (item: EtablissementDTO) =>
+    navigation.navigate("EstablishmentBooking", {
+      establishment: item,
+      initialPeople: 2,
+      initialDateISO: new Date().toISOString().slice(0, 10),
+      initialTime: "",
+      availableSlots: {},
+    });
 
   /******************************************************
    * FILTER ACTIONS
@@ -311,12 +371,39 @@ export default function SearchResultsScreen() {
         </View>
       </View>
 
-      {filterGroups.length > 0 && (
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={styles.chips}
-        >
+      <ScrollView
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        contentContainerStyle={styles.chips}
+      >
+          <TouchableOpacity
+            onPress={toggleNearMe}
+            disabled={locating}
+            activeOpacity={0.8}
+            accessibilityRole="button"
+            accessibilityState={{ selected: !!origin, busy: locating }}
+            style={[styles.chip, !!origin && styles.chipActive]}
+          >
+            {locating ? (
+              <ActivityIndicator size="small" color={INK} />
+            ) : (
+              <AppIcon name="navigate" size={14} color={origin ? "#FFFFFF" : BRAND} />
+            )}
+            <Text style={[styles.chipText, !!origin && styles.chipTextActive]}>{t("search.nearby")}</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            onPress={() => setShowMap((v) => !v)}
+            activeOpacity={0.8}
+            accessibilityRole="button"
+            style={[styles.chip, showMap && styles.chipActive]}
+          >
+            <AppIcon name={showMap ? "list" : "map"} size={14} color={showMap ? "#FFFFFF" : BRAND} />
+            <Text style={[styles.chipText, showMap && styles.chipTextActive]}>
+              {showMap ? t("results.list") : t("results.map")}
+            </Text>
+          </TouchableOpacity>
+
           {filterGroups.map((g) => {
             const n = selectedIn(g, selectedFilters);
             return (
@@ -341,8 +428,7 @@ export default function SearchResultsScreen() {
               <Text style={styles.chipClearText}>{t("results.clearAll")}</Text>
             </TouchableOpacity>
           )}
-        </ScrollView>
-      )}
+      </ScrollView>
     </View>
   );
 
@@ -368,6 +454,43 @@ export default function SearchResultsScreen() {
       {/* Header lives outside the list so the search field never unmounts while results reload. */}
       {header}
 
+      {showMap ? (
+        <View style={styles.mapWrap}>
+          <MapView
+            ref={mapRef}
+            style={StyleSheet.absoluteFill}
+            initialRegion={
+              origin
+                ? { latitude: origin.lat, longitude: origin.lng, latitudeDelta: 0.1, longitudeDelta: 0.1 }
+                : FALLBACK_REGION
+            }
+            showsUserLocation={!!origin}
+            onMapReady={fitMap}
+          >
+            {mappable.map((e) => (
+              <Marker
+                key={e.id}
+                coordinate={{ latitude: e.latitude!, longitude: e.longitude! }}
+                title={e.nom}
+                description={
+                  e.distanceKm != null
+                    ? `${e.address ?? ""} · ${t("results.distance", { km: e.distanceKm.toFixed(1) })}`
+                    : e.address ?? undefined
+                }
+                pinColor={BRAND}
+                onCalloutPress={() => openEstablishment(e)}
+              />
+            ))}
+          </MapView>
+          {loading ? (
+            <View style={styles.mapBanner}><ActivityIndicator size="small" color={BRAND} /></View>
+          ) : etabs.length === 0 ? (
+            <View style={styles.mapBanner}><Text style={styles.mapBannerText}>{t("results.emptyTitle")}</Text></View>
+          ) : mappable.length === 0 ? (
+            <View style={styles.mapBanner}><Text style={styles.mapBannerText}>{t("results.noLocations")}</Text></View>
+          ) : null}
+        </View>
+      ) : (
       <FlatList
         data={loading ? [] : etabs}
         keyExtractor={(i) => String(i.id)}
@@ -379,19 +502,12 @@ export default function SearchResultsScreen() {
           <Card
             item={item}
             summary={summaries[item.id]}
-            onPress={() =>
-              navigation.navigate("EstablishmentBooking", {
-                establishment: item,
-                initialPeople: 2,
-                initialDateISO: new Date().toISOString().slice(0, 10),
-                initialTime: "",
-                availableSlots: {},
-              })
-            }
+            onPress={() => openEstablishment(item)}
           />
         )}
         ListEmptyComponent={empty}
       />
+      )}
 
       {/* FILTER SHEET */}
       <Modal visible={!!activeGroup} transparent animationType="slide" onRequestClose={closeModal}>
@@ -533,6 +649,7 @@ const styles = StyleSheet.create({
   cardTitle: { fontSize: 18, fontWeight: "700", color: INK },
   cardRow: { flexDirection: "row", alignItems: "center", gap: 6 },
   cardMeta: { flex: 1, fontSize: 14, color: MUTED },
+  cardDistance: { fontSize: 14, fontWeight: "700", color: BRAND },
   cardFooter: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginTop: 4 },
   cardReviews: { fontSize: 14, color: "#4A4540", fontWeight: "500" },
   cardArrow: {
@@ -543,6 +660,24 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
+
+  mapWrap: { flex: 1 },
+  mapBanner: {
+    position: "absolute",
+    top: 16,
+    alignSelf: "center",
+    maxWidth: "90%",
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: 14,
+    backgroundColor: "rgba(255,255,255,0.96)",
+    shadowColor: "#000",
+    shadowOpacity: 0.12,
+    shadowRadius: 10,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 4,
+  },
+  mapBannerText: { fontSize: 14, fontWeight: "600", color: INK, textAlign: "center" },
 
   skeleton: { shadowOpacity: 0, elevation: 0 },
   skeletonLine: { height: 12, borderRadius: 6, backgroundColor: "#ECE9E5", marginTop: 4 },
