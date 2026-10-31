@@ -18,7 +18,16 @@ export interface Prestation {
   preparationTimeMinutes: number | null;
   categorieId: number;
   categorieNom: string;
+  validated?: boolean;
+  /** "Affichée mais non réservable": listed, but cannot be booked online. */
+  showAsUnavailable?: boolean;
+  /** Who the client may ask for (first names), when the prestation needs someone. */
+  collaborateurOptions?: { id: number; label: string }[] | null;
+  /** A pack: its steps (done one after the other). */
+  etapeIds?: number[] | null;
 }
+
+export const isBookable = (p: Prestation) => p.validated !== false && !p.showAsUnavailable;
 
 export interface PageResult<T> {
   content: T[];
@@ -27,7 +36,7 @@ export interface PageResult<T> {
 }
 
 export async function fetchCategories(etablissementId: number): Promise<PrestationCategorie[]> {
-  const url = `${API.BASE_URL}/prestation-categories/etablissement/${etablissementId}?page=0&size=50&sort=id,desc`;
+  const url = `${API.BASE_URL}/prestation-categories/etablissement/${etablissementId}?page=0&size=50&sort=id,asc`;
   const { data } = await http.get<PageResult<PrestationCategorie>>(url);
   return data.content;
 }

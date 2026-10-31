@@ -27,6 +27,8 @@ export interface ReservationDto {
   heureDebut: string;
   heureFin?: string;
   statut: StatutReservation;
+  /** The whole cart, in the order chosen. */
+  prestations?: { id: number; nom: string; durationMinutes?: number | null }[];
   name: string;
   clientId: number;
   address: string;
@@ -128,7 +130,8 @@ export async function createReservation(
   timeHHmm: string,
   people?: number,
   programId?: string,
-  clientId?: number
+  clientId?: number,
+  collaborateurId?: number | null
 ): Promise<ReservationCreateFlexDto> {
   if (!clientId) throw new Error("clientId is required");
 
@@ -139,7 +142,9 @@ export async function createReservation(
     time: timeHHmm.length > 5 ? timeHHmm.slice(0, 5) : timeHHmm,
     partySize: typeof people === "number" ? people : null,
     prestationId: programId ? Number(programId) : null,
-    collborateurId: null,
+    // the practitioner the client asked for, if any
+    collaborateurByPrestation:
+      programId && collaborateurId != null ? { [Number(programId)]: collaborateurId } : undefined,
     statut: "PENDING" as StatutReservation,
     id: undefined,
   };
@@ -148,13 +153,17 @@ export async function createReservation(
   return data;
 }
 
-/** SPA cart: books several prestations as one visit starting at dateISO/timeHHmm (backend sums the durations). */
+/**
+ * SPA cart: books several prestations as one visit starting at dateISO/timeHHmm, in the order chosen.
+ * The backend gives each prestation (each step of a pack) to someone qualified and free for it.
+ */
 export async function createReservationCart(
   placeId: number,
   dateISO: string,
   timeHHmm: string,
   prestationIds: number[],
-  clientId: number
+  clientId: number,
+  collaborateurByPrestation: Record<number, number> = {}
 ): Promise<ReservationCreateFlexDto> {
   if (!clientId) throw new Error("clientId is required");
   if (prestationIds.length === 0) throw new Error("prestationIds is required");
@@ -168,7 +177,7 @@ export async function createReservationCart(
     // single item: same payload as a normal booking; several: the backend's multi-prestation path
     prestationId: prestationIds.length === 1 ? prestationIds[0] : null,
     prestationIds: prestationIds.length > 1 ? prestationIds : null,
-    collborateurId: null,
+    collaborateurByPrestation,
     statut: "PENDING" as StatutReservation,
   };
 

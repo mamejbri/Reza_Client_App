@@ -40,3 +40,30 @@ export async function fetchPrestationAvailability(
   });
   return data;
 }
+
+/**
+ * Start times for a whole cart: its prestations one after the other (a pack as its steps),
+ * each by someone qualified and free for it. Only the first prestation used to be checked.
+ */
+export async function fetchPanierAvailability(
+  etablissementId: number,
+  prestationIds: number[],
+  dateISO: string,
+  collaborateurByPrestation: Record<number, number | null> = {},
+  excludeReservationId?: number
+): Promise<AvailabilitySlotsResponse> {
+  const pins = Object.entries(collaborateurByPrestation)
+    .filter(([, c]) => c != null)
+    .map(([p, c]) => `${p}:${c}`);
+
+  const { data } = await http.get<AvailabilitySlotsResponse>(`${API.BASE_URL}/availability/panier/slots`, {
+    params: {
+      etablissementId,
+      prestationIds: prestationIds.join(','),
+      date: dateISO,
+      collaborateurs: pins.length ? pins.join(',') : undefined,
+      excludeReservationId,
+    },
+  });
+  return data;
+}

@@ -497,13 +497,26 @@ const passedImage = route?.params?.imageUrl ?? null;
   }
 
   const heroHeight = Math.round(Math.min(contentWidth, MAX_CONTENT_WIDTH) * 0.7) + insets.top;
+  // a cart shows all its prestations, in the order booked (only the first one used to show)
+  const panier: { id: number; nom: string }[] = Array.isArray(reservation?.prestations) ? reservation.prestations : [];
   const prestationName =
+    (panier.length > 1 ? panier.map((p) => p.nom).join(' + ') : null) ??
     reservation?.program?.title ??
     reservation?.program?.nom ??
     reservation?.programTitle ??
     reservation?.prestationName ??
     '—';
-  const prestationDuration = (reservation?.program?.duration_minutes ?? reservation?.durationMinutes) as number | undefined;
+  const bookedMinutes =
+    reservation?.heureDebut && reservation?.heureFin
+      ? dayjs(`2000-01-01T${String(reservation.heureFin).slice(0, 5)}`).diff(
+          dayjs(`2000-01-01T${String(reservation.heureDebut).slice(0, 5)}`),
+          'minute'
+        )
+      : undefined;
+  const prestationDuration = (reservation?.program?.duration_minutes ??
+    reservation?.durationMinutes ??
+    (bookedMinutes && bookedMinutes > 0 ? bookedMinutes : undefined) ??
+    reservation?.prestationDuration) as number | undefined;
   const momentLabel = (() => {
     const hh = Number(String(time).split(':')[0] || '0');
     return Number.isFinite(hh) && hh < 18 ? t('detail.lunch') : t('detail.dinner');
@@ -770,8 +783,12 @@ const passedImage = route?.params?.imageUrl ?? null;
                       isRestaurant ? undefined : (reservation?.program_id ?? reservation?.prestationId)
                     }
                     openingHours={placeObj?.openingHours ?? []}
+                    editPrestationIds={panier.map((x) => x.id)}
+                    excludeReservationId={
+                      reservation?.id && reservation.id !== 'new' ? Number(reservation.id) : undefined
+                    }
                     onPartySizeChange={(n) => setPeople(n)}
-                    onConfirm={async (p, dISO, hhmm, programId, clientIdFromForm) => {
+                    onConfirm={async (p, dISO, hhmm, programId, clientIdFromForm, collaborateurId) => {
                       const cid = clientIdFromForm ?? resolvedClientId;
                       if (!isRestaurant && !programId) {
                         Alert.alert(t('detail.choiceRequired'), t('detail.selectPrestation'));
@@ -792,7 +809,8 @@ const passedImage = route?.params?.imageUrl ?? null;
                             hhmm,
                             p,
                             isRestaurant ? undefined : programId,
-                            Number(cid)
+                            Number(cid),
+                            collaborateurId
                           );
                           success = !!created;
                           if (created) {
@@ -809,12 +827,8 @@ const passedImage = route?.params?.imageUrl ?? null;
                             return;
                           }
 
-                          const durationMin =
-                            reservation?.program?.duration_minutes ??
-                            reservation?.program?.duration ??
-                            reservation?.durationMinutes ??
-                            undefined;
-
+                          // No end time sent: the server works it out from the whole cart
+                          // (it used to be the first prestation's duration, cutting a cart short).
                           success = await updateReservation({
                             id: reservation.id,
                             clientId: Number(cid),
@@ -823,8 +837,7 @@ const passedImage = route?.params?.imageUrl ?? null;
                             statut: (reservation?.statut as any) ?? 'PENDING',
                             people: p,
                             programId: isRestaurant ? undefined : programId,
-                            durationMin:
-                              isRestaurant ? undefined : (typeof durationMin === 'number' ? durationMin : undefined),
+                            collaborateurId: collaborateurId ?? undefined,
                             source: 'ENLIGNE',
                           });
 

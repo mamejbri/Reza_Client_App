@@ -24,8 +24,9 @@ import {
   fetchPrestationsByCategory,
   PrestationCategorie,
   Prestation,
+  isBookable,
 } from '../services/prestations';
-import { fetchPrestationAvailability } from '../services/availability';
+import { fetchPanierAvailability, fetchPrestationAvailability } from '../services/availability';
 import { useI18n } from '../src/i18n/LocaleProvider';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -60,21 +61,26 @@ interface Props {
     dateISO: string,
     time: string,
     programId?: string,
-    clientId?: number
+    clientId?: number,
+    collaborateurId?: number | null
   ) => Promise<void | 'SLOT_TAKEN'>;
   onPartySizeChange?: (people: number) => void;
   /**
-   * SPA multi-prestation cart: the first item locks the visit date/time,
-   * later items reuse it. Each prestation in the cart produces a separate reservation
-   * with sequentially computed start times.
+   * SPA multi-prestation cart: the first item locks the visit date/time, each later item is
+   * checked to follow the others at that time, and the whole cart is booked as one reservation.
    */
   enableCart?: boolean;
   onConfirmCart?: (
     cartItems: Prestation[],
     dateISO: string,
     time: string,
-    clientId: number
+    clientId: number,
+    collaborateurByPrestation: Record<number, number>
   ) => Promise<void | 'SLOT_TAKEN'>;
+  /** Editing a booked cart: its prestations, the first one being the one shown as selected. */
+  editPrestationIds?: number[];
+  /** Editing: the reservation itself does not block the times it already holds. */
+  excludeReservationId?: number;
 }
 
 /* ---------------- time helpers (15-min step) ---------------- */
@@ -150,6 +156,8 @@ const EditReservationForm: React.FC<Props> = ({
   onPartySizeChange,
   enableCart,
   onConfirmCart,
+  editPrestationIds,
+  excludeReservationId,
 }) => {
   const { t, formatMoney, formatDate } = useI18n();
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
@@ -185,6 +193,12 @@ const EditReservationForm: React.FC<Props> = ({
   const [cartDate, setCartDate] = useState('');
   const [cartTime, setCartTime] = useState('');
   const [showCart, setShowCart] = useState(false);
+  // practitioner asked for the prestation being chosen (null: no preference), and for each cart item
+  const [selectedCollaborateurId, setSelectedCollaborateurId] = useState<number | null>(null);
+  const [cartPins, setCartPins] = useState<Record<number, number | null>>({});
+  // whether the prestation being chosen can follow the cart at its time (checked with the server)
+  const [fitChecking, setFitChecking] = useState(false);
+  const [fitOk, setFitOk] = useState(false);
 
   /* ---------- people ---------- */
   const setPeopleAndEmit = (val: number) => {
@@ -277,6 +291,10 @@ const EditReservationForm: React.FC<Props> = ({
     }
   };
 
+  useEffect(() => {
+    setSelectedCollaborateurId(null);
+  }, [selectedProgramId]);
+
   const selectedCategory = categories.find((c) => c.id === expandedCategoryId) || null;
   const prestations = selectedCategory ? prestationsByCat[selectedCategory.id] ?? [] : [];
   const selectedProgram = prestations.find((p) => p.id === Number(selectedProgramId)) ?? null;
@@ -364,14 +382,24 @@ const EditReservationForm: React.FC<Props> = ({
         setServerSlots([]);
         return;
       }
+      // the visit time is locked by the cart: checked further down instead
+      if (cartItems.length > 0) return;
       try {
         setAvailLoading(true);
-        const resp = await fetchPrestationAvailability(
-          etablissementId,
-          Number(selectedProgramId),
-          dateISO,
-          STEP_MIN
-        );
+        const programId = Number(selectedProgramId);
+        // a booked cart is checked as a whole (its first prestation may have been changed)
+        const ids =
+          editPrestationIds && editPrestationIds.length > 1 ? [programId, ...editPrestationIds.slice(1)] : [programId];
+        const resp =
+          ids.length > 1 || selectedCollaborateurId != null || excludeReservationId != null
+            ? await fetchPanierAvailability(
+                etablissementId,
+                ids,
+                dateISO,
+                { [programId]: selectedCollaborateurId },
+                excludeReservationId
+              )
+            : await fetchPrestationAvailability(etablissementId, programId, dateISO, STEP_MIN);
         if (!mounted) return;
         const slots = Array.isArray(resp.slots)
           ? resp.slots.map((s) => s.toString().slice(0, 5))
@@ -386,7 +414,8 @@ const EditReservationForm: React.FC<Props> = ({
     return () => {
       mounted = false;
     };
-  }, [isOther, selectedProgramId, etablissementId, dateISO, slotsReloadKey]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isOther, selectedProgramId, selectedCollaborateurId, etablissementId, dateISO, slotsReloadKey, cartItems.length > 0]);
 
   // base slots:
   // - RESTAURANT: openingHours or legacy availableSlots
@@ -482,7 +511,8 @@ const finalTimeList: string[] = useMemo(() => {
         dateISO,
         time,
         selectedProgramId ?? undefined,
-        cid
+        cid,
+        selectedCollaborateurId
       );
       if (outcome === 'SLOT_TAKEN') {
         setTime('');
@@ -502,9 +532,50 @@ const finalTimeList: string[] = useMemo(() => {
   const selectedPrestation = allPrestations.find((p) => String(p.id) === selectedProgramId) ?? null;
   const isInCart = (id: number) => cartItems.some((p) => p.id === id);
   const cartTotalMinutes = cartItems.reduce((sum, p) => sum + (p.durationMinutes ?? 0), 0);
-  // the first item needs a chosen time; later items reuse the locked visit time
+  /** Lowest price of a prestation (its fixed price, or the bottom of its range); null on quote. */
+  const priceOf = (p: Prestation) => p.prixFixe ?? p.prixMin ?? null;
+  const cartTotalPrice = cartItems.reduce((sum, p) => sum + (priceOf(p) ?? 0), 0);
+  // "à partir de" when a price is a range or on quote
+  const cartTotalIsFrom = cartItems.some((p) => p.prixFixe == null);
+  const practitionerName = (p: Prestation, id: number | null | undefined) =>
+    id == null ? '' : (p.collaborateurOptions ?? []).find((c) => c.id === id)?.label ?? '';
+
+  // Each later item must follow the cart at the locked visit time, every prestation by someone free for it.
+  useEffect(() => {
+    let mounted = true;
+    setFitOk(false);
+    if (!cartLocked || !selectedPrestation || isInCart(selectedPrestation.id)) {
+      setFitChecking(false);
+      return;
+    }
+    const ids = [...cartItems.map((p) => p.id), selectedPrestation.id];
+    const pins = { ...cartPins, [selectedPrestation.id]: selectedCollaborateurId };
+    setFitChecking(true);
+    fetchPanierAvailability(etablissementId, ids, cartDate, pins)
+      .then((resp) => {
+        if (!mounted) return;
+        const ok = (resp.slots ?? []).some((s) => s.toString().slice(0, 5) === cartTime);
+        setFitOk(ok);
+        if (!ok) Alert.alert(t('booking.title'), t('booking.cannotChain', { time: cartTime }));
+      })
+      .catch(() => {
+        if (mounted) setFitOk(false);
+      })
+      .finally(() => {
+        if (mounted) setFitChecking(false);
+      });
+    return () => {
+      mounted = false;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [cartLocked, selectedPrestation?.id, selectedCollaborateurId, cartItems, cartDate, cartTime, etablissementId]);
+
+  // the first item needs a chosen time; later items must fit after the cart at the locked visit time
   const canAddToCart =
-    cartMode && !!selectedPrestation && !isInCart(selectedPrestation.id) && (cartLocked || !!time);
+    cartMode &&
+    !!selectedPrestation &&
+    !isInCart(selectedPrestation.id) &&
+    (cartLocked ? fitOk && !fitChecking : !!time);
 
   const addToCart = () => {
     if (!canAddToCart || !selectedPrestation) return;
@@ -513,6 +584,7 @@ const finalTimeList: string[] = useMemo(() => {
       setCartTime(time);
     }
     setCartItems([...cartItems, selectedPrestation]);
+    setCartPins({ ...cartPins, [selectedPrestation.id]: selectedCollaborateurId });
     setSelectedProgramId(null);
     setTime('');
   };
@@ -521,6 +593,7 @@ const finalTimeList: string[] = useMemo(() => {
   const removeFromCart = (id: number) => {
     const next = cartItems.filter((p) => p.id !== id);
     setCartItems(next);
+    setCartPins(({ [id]: _removed, ...rest }) => rest);
     if (next.length === 0) {
       setDateISO(cartDate || dateISO);
       setTime(cartTime);
@@ -530,8 +603,11 @@ const finalTimeList: string[] = useMemo(() => {
   };
 
   const editCartItem = (p: Prestation) => {
+    const pin = cartPins[p.id] ?? null;
     removeFromCart(p.id);
     setSelectedProgramId(String(p.id));
+    // after the reset done when the selection changes
+    setTimeout(() => setSelectedCollaborateurId(pin), 0);
     setShowCart(false);
   };
 
@@ -541,11 +617,17 @@ const finalTimeList: string[] = useMemo(() => {
     if (!cid) return;
     setIsSaving(true);
     try {
-      const outcome = await onConfirmCart(cartItems, cartDate, cartTime, cid);
+      const pins: Record<number, number> = {};
+      for (const p of cartItems) {
+        const pin = cartPins[p.id];
+        if (pin != null) pins[p.id] = pin;
+      }
+      const outcome = await onConfirmCart(cartItems, cartDate, cartTime, cid, pins);
       if (outcome === 'SLOT_TAKEN') {
         // The visit time is gone: unlock it and reselect the first item so new times load.
         const first = cartItems[0];
         setCartItems([]);
+        setCartPins({});
         setDateISO(cartDate);
         setCartDate('');
         setCartTime('');
@@ -667,19 +749,30 @@ const finalTimeList: string[] = useMemo(() => {
                     ) : (
                       (prestationsByCat[cat.id] ?? []).map((p) => {
                         const selected = selectedProgramId === String(p.id);
+                        // "Affichée mais non réservable": shown greyed, cannot be chosen
+                        const bookable = isBookable(p);
                         return (
                           <TouchableOpacity
                             key={p.id}
-                            activeOpacity={0.85}
+                            activeOpacity={bookable ? 0.85 : 1}
+                            disabled={!bookable}
                             onPress={() => setSelectedProgramId(selected ? null : String(p.id))}
-                            style={[styles.service, selected && styles.serviceSelected]}
+                            accessibilityRole="radio"
+                            accessibilityState={{ selected, disabled: !bookable }}
+                            style={[styles.service, selected && styles.serviceSelected, !bookable && styles.serviceDisabled]}
                           >
-                            <View style={[styles.radio, selected && styles.radioOn]}>
+                            <View style={[styles.radio, (selected || isInCart(p.id)) && styles.radioOn]}>
                               {selected && <View style={styles.radioDot} />}
+                              {!selected && cartMode && isInCart(p.id) && (
+                                <AppIcon name="checkmark" size={12} color={BRAND} />
+                              )}
                             </View>
                             <View style={{ flex: 1 }}>
                               <View style={styles.serviceTop}>
                                 <Text style={styles.serviceName}>{p.nom}</Text>
+                                {!bookable && (
+                                  <Text style={styles.notBookable}>{t('booking.notBookableOnline')}</Text>
+                                )}
                                 {cartMode && isInCart(p.id) && (
                                   <View style={styles.inCart}>
                                     <AppIcon name="checkmark" size={12} color={BRAND} />
@@ -706,6 +799,38 @@ const finalTimeList: string[] = useMemo(() => {
 
                               {selected && !!p.description && (
                                 <Text style={styles.serviceDescription}>{p.description}</Text>
+                              )}
+
+                              {/* the client may ask for someone, or leave it to the establishment */}
+                              {selected && (p.collaborateurOptions ?? []).length > 0 && (
+                                <View style={styles.practitioners}>
+                                  <Text style={styles.rowLabel}>{t('booking.practitioner')}</Text>
+                                  <View style={styles.practitionerChips}>
+                                    {[
+                                      { id: null as number | null, label: t('booking.anyPractitioner') },
+                                      ...(p.collaborateurOptions ?? []),
+                                    ].map((c) => {
+                                      const on = selectedCollaborateurId === c.id;
+                                      return (
+                                        <TouchableOpacity
+                                          key={c.id ?? 'any'}
+                                          onPress={() => {
+                                            setSelectedCollaborateurId(c.id);
+                                            setTime('');
+                                          }}
+                                          activeOpacity={0.85}
+                                          accessibilityRole="radio"
+                                          accessibilityState={{ selected: on }}
+                                          style={[styles.practitionerChip, on && styles.practitionerChipOn]}
+                                        >
+                                          <Text style={[styles.practitionerText, on && styles.practitionerTextOn]}>
+                                            {c.label}
+                                          </Text>
+                                        </TouchableOpacity>
+                                      );
+                                    })}
+                                  </View>
+                                </View>
                               )}
                             </View>
                           </TouchableOpacity>
@@ -766,7 +891,12 @@ const finalTimeList: string[] = useMemo(() => {
       {/* Confirm (or, for SPA, add to cart — the cart is confirmed from its sheet) */}
       <View style={{ marginTop: 6 }}>
         {cartMode ? (
-          <AuthButton label={t('booking.addToCart')} onPress={addToCart} disabled={!canAddToCart} />
+          <AuthButton
+            label={t('booking.addToCart')}
+            onPress={addToCart}
+            disabled={!canAddToCart}
+            loading={fitChecking}
+          />
         ) : (
           <AuthButton
             label={t('booking.confirm')}
@@ -812,9 +942,18 @@ const finalTimeList: string[] = useMemo(() => {
                           <AppIcon name="time-outline" size={13} color={MUTED} />
                           <Text style={styles.serviceMetaText}>
                             {formatDuration(p.durationMinutes)}
-                            {p.prixFixe !== null ? ` • ${formatMoney(p.prixFixe)}` : ''}
+                            {p.prixFixe != null
+                              ? ` • ${formatMoney(p.prixFixe)}`
+                              : p.prixMin != null && p.prixMax != null
+                              ? ` • ${t('booking.priceRange', { min: formatMoney(p.prixMin), max: formatMoney(p.prixMax) })}`
+                              : ` • ${t('booking.onQuote')}`}
                           </Text>
                         </View>
+                        {!!practitionerName(p, cartPins[p.id]) && (
+                          <Text style={[styles.serviceMetaText, { marginTop: 2 }]}>
+                            {t('booking.withPractitioner', { name: practitionerName(p, cartPins[p.id]) })}
+                          </Text>
+                        )}
                       </View>
                       <View style={{ flexDirection: 'row', gap: 6 }}>
                         <TouchableOpacity
@@ -838,6 +977,11 @@ const finalTimeList: string[] = useMemo(() => {
                 <View style={styles.totalRow}>
                   <Text style={styles.totalText}>
                     {t('booking.totalDuration', { n: formatDuration(cartTotalMinutes) })}
+                  </Text>
+                  <Text style={[styles.totalText, { marginTop: 4 }]}>
+                    {t(cartTotalIsFrom ? 'booking.cartTotalFrom' : 'booking.cartTotal', {
+                      amount: formatMoney(cartTotalPrice),
+                    })}
                   </Text>
                 </View>
                 <AuthButton label={t('booking.confirmCart')} onPress={confirmCart} loading={isSaving} />
@@ -1043,6 +1187,21 @@ const styles = StyleSheet.create({
     backgroundColor: '#FFFFFF',
   },
   serviceSelected: { borderColor: BRAND, backgroundColor: BRAND_TINT },
+  serviceDisabled: { opacity: 0.5 },
+  notBookable: { fontSize: 11, fontWeight: '700', color: MUTED },
+  practitioners: { marginTop: 10 },
+  practitionerChips: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginTop: 4 },
+  practitionerChip: {
+    paddingHorizontal: 12,
+    paddingVertical: 7,
+    borderRadius: 14,
+    borderWidth: 1.5,
+    borderColor: '#E4E0DB',
+    backgroundColor: '#FFFFFF',
+  },
+  practitionerChipOn: { borderColor: BRAND, backgroundColor: BRAND },
+  practitionerText: { fontSize: 13, fontWeight: '600', color: INK },
+  practitionerTextOn: { color: '#FFFFFF' },
   radio: {
     width: 20,
     height: 20,

@@ -29,9 +29,8 @@ import EditReservationForm from "../../components/EditReservationForm";
 import ReviewSection from "../../components/ReviewSection";
 import AboutSection from "../../components/AboutSection";
 
-import { createReservation } from "../../services/reservations";
+import { createReservation, createReservationCart } from "../../services/reservations";
 import type { Prestation } from "../../services/prestations";
-import dayjs from "dayjs";
 import { getStoredClientId } from "../../src/api/auth";
 import { EstablishmentType, ESTABLISHMENT_LABELS } from "../../types/establishment";
 
@@ -309,7 +308,8 @@ useEffect(() => {
     dateISO: string,
     time: string,
     programId?: string,
-    clientIdFromForm?: number
+    clientIdFromForm?: number,
+    collaborateurId?: number | null
   ): Promise<void | "SLOT_TAKEN"> => {
     const cid = clientIdFromForm ?? clientId;
     if (!cid) {
@@ -317,55 +317,31 @@ useEffect(() => {
       return;
     }
     return submitBooking((etabId) =>
-      createReservation(etabId, dateISO, time, people, programId, cid)
+      createReservation(etabId, dateISO, time, people, programId, cid, collaborateurId)
     );
   };
 
-  const onConfirmCart = async (
+  /**
+   * Books the whole cart as one reservation, in the order chosen: the server gives each
+   * prestation (each step of a pack) to someone qualified and checks they are all free.
+   */
+  const onConfirmCart = (
     prestations: Prestation[],
     dateISO: string,
     startTime: string,
-    cid: number
-  ): Promise<void | "SLOT_TAKEN"> => {
-    if (!establishment) {
-      Alert.alert(t("common.error"), t("establishment.notFound"));
-      return;
-    }
-
-    let currentTime = startTime;
-
-    try {
-      for (const prestation of prestations) {
-        await createReservation(
-          establishment.id,
-          dateISO,
-          currentTime,
-          undefined,
-          String(prestation.id),
-          cid
-        );
-        if (prestation.durationMinutes) {
-          currentTime = dayjs(`2000-01-01T${currentTime}`)
-            .add(prestation.durationMinutes, "minute")
-            .format("HH:mm");
-        }
-      }
-
-      Alert.alert(t("establishment.confirmedTitle"), t("establishment.confirmedMessage"));
-      navigation.dispatch(
-        CommonActions.reset({ index: 0, routes: [{ name: "Appointments" }] })
-      );
-    } catch (e: any) {
-      if (isSlotUnavailable(e)) {
-        Alert.alert(t("establishment.slotTakenTitle"), t("establishment.slotTaken"));
-        return "SLOT_TAKEN";
-      }
-      Alert.alert(
-        t("common.error"),
-        e?.response?.data?.message ?? e?.message ?? t("establishment.createError")
-      );
-    }
-  };
+    cid: number,
+    collaborateurByPrestation: Record<number, number>
+  ): Promise<void | "SLOT_TAKEN"> =>
+    submitBooking((etabId) =>
+      createReservationCart(
+        etabId,
+        dateISO,
+        startTime,
+        prestations.map((p) => p.id),
+        cid,
+        collaborateurByPrestation
+      )
+    );
 
   // -----------------------------------------------------
   // LOADING
