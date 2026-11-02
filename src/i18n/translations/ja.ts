@@ -143,7 +143,7 @@ export const ja: Translations = {
     slotTaken: 'この時間はたった今予約されたか、利用できなくなりました。別の時間を選んでください。',
   },
   booking: {
-    notBookableOnline: 'オンライン予約不可',
+    notBookableOnline: 'オンライン予約不可：このメニューのご予約は店舗へお問い合わせください。',
     practitioner: '担当者',
     anyPractitioner: '指定なし',
     withPractitioner: '{{name}} が担当',

@@ -143,7 +143,7 @@ export const hi: Translations = {
     slotTaken: 'यह समय अभी-अभी बुक हो गया या अब उपलब्ध नहीं है। कृपया दूसरा समय चुनें।',
   },
   booking: {
-    notBookableOnline: 'ऑनलाइन बुक नहीं हो सकती',
+    notBookableOnline: 'ऑनलाइन बुक नहीं हो सकती: यह सेवा बुक करने के लिए प्रतिष्ठान से संपर्क करें।',
     practitioner: 'थेरेपिस्ट',
     anyPractitioner: 'कोई भी',
     withPractitioner: '{{name}} के साथ',

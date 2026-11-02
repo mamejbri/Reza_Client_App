@@ -759,7 +759,7 @@ const finalTimeList: string[] = useMemo(() => {
                             onPress={() => setSelectedProgramId(selected ? null : String(p.id))}
                             accessibilityRole="radio"
                             accessibilityState={{ selected, disabled: !bookable }}
-                            style={[styles.service, selected && styles.serviceSelected, !bookable && styles.serviceDisabled]}
+                            style={[styles.service, selected && styles.serviceSelected]}
                           >
                             <View style={[styles.radio, (selected || isInCart(p.id)) && styles.radioOn]}>
                               {selected && <View style={styles.radioDot} />}
@@ -768,11 +768,15 @@ const finalTimeList: string[] = useMemo(() => {
                               )}
                             </View>
                             <View style={{ flex: 1 }}>
-                              <View style={styles.serviceTop}>
+                              {/* "Affichée mais non réservable": listed with this message, cannot be chosen */}
+                              {!bookable && (
+                                <View style={styles.notBookable} accessibilityRole="text">
+                                  <AppIcon name="info" size={16} color={BRAND} />
+                                  <Text style={styles.notBookableText}>{t('booking.notBookableOnline')}</Text>
+                                </View>
+                              )}
+                              <View style={[styles.serviceTop, !bookable && styles.serviceDisabled]}>
                                 <Text style={styles.serviceName}>{p.nom}</Text>
-                                {!bookable && (
-                                  <Text style={styles.notBookable}>{t('booking.notBookableOnline')}</Text>
-                                )}
                                 {cartMode && isInCart(p.id) && (
                                   <View style={styles.inCart}>
                                     <AppIcon name="checkmark" size={12} color={BRAND} />
@@ -781,7 +785,7 @@ const finalTimeList: string[] = useMemo(() => {
                                 )}
                               </View>
 
-                              <View style={styles.serviceMeta}>
+                              <View style={[styles.serviceMeta, !bookable && styles.serviceDisabled]}>
                                 {!!p.durationMinutes && (
                                   <View style={styles.serviceMetaItem}>
                                     <AppIcon name="time-outline" size={14} color={MUTED} />
@@ -1188,7 +1192,17 @@ const styles = StyleSheet.create({
   },
   serviceSelected: { borderColor: BRAND, backgroundColor: BRAND_TINT },
   serviceDisabled: { opacity: 0.5 },
-  notBookable: { fontSize: 11, fontWeight: '700', color: MUTED },
+  notBookable: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 6,
+    marginBottom: 8,
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+    borderRadius: 10,
+    backgroundColor: BRAND_TINT,
+  },
+  notBookableText: { flex: 1, fontSize: 13, lineHeight: 18, fontWeight: '600', color: INK },
   practitioners: { marginTop: 10 },
   practitionerChips: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginTop: 4 },
   practitionerChip: {

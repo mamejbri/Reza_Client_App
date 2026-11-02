@@ -143,7 +143,7 @@ export const ar: Translations = {
     slotTaken: 'تم حجز هذا الموعد للتو أو لم يعد متاحاً. يرجى اختيار وقت آخر.',
   },
   booking: {
-    notBookableOnline: 'غير قابل للحجز عبر الإنترنت',
+    notBookableOnline: 'غير قابل للحجز عبر الإنترنت: تواصل مع المؤسسة لحجز هذه الخدمة.',
     practitioner: 'المعالج(ة)',
     anyPractitioner: 'لا يهم',
     withPractitioner: 'مع {{name}}',

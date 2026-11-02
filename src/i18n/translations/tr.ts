@@ -143,7 +143,7 @@ export const tr: Translations = {
     slotTaken: 'Bu saat az önce rezerve edildi veya artık müsait değil. Lütfen başka bir saat seçin.',
   },
   booking: {
-    notBookableOnline: 'Çevrimiçi rezerve edilemez',
+    notBookableOnline: 'Çevrimiçi rezerve edilemez: bu hizmeti rezerve etmek için işletmeyle iletişime geçin.',
     practitioner: 'Uzman',
     anyPractitioner: 'Fark etmez',
     withPractitioner: '{{name}} ile',

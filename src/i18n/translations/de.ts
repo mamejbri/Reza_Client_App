@@ -143,7 +143,7 @@ export const de: Translations = {
     slotTaken: 'Dieser Termin wurde gerade gebucht oder ist nicht mehr verfügbar. Bitte wähle eine andere Uhrzeit.',
   },
   booking: {
-    notBookableOnline: 'Nicht online buchbar',
+    notBookableOnline: 'Nicht online buchbar: Wenden Sie sich an die Einrichtung, um diese Leistung zu buchen.',
     practitioner: 'Behandler(in)',
     anyPractitioner: 'Egal',
     withPractitioner: 'mit {{name}}',

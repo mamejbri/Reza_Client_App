@@ -143,7 +143,7 @@ export const ru: Translations = {
     slotTaken: 'Это время только что заняли, или оно больше недоступно. Выберите другое время.',
   },
   booking: {
-    notBookableOnline: 'Нельзя забронировать онлайн',
+    notBookableOnline: 'Нельзя забронировать онлайн: свяжитесь с заведением, чтобы забронировать эту услугу.',
     practitioner: 'Специалист',
     anyPractitioner: 'Не важно',
     withPractitioner: 'с {{name}}',

@@ -143,7 +143,7 @@ export const zh: Translations = {
     slotTaken: '该时段刚刚被预订或已不可用，请选择其他时间。',
   },
   booking: {
-    notBookableOnline: '不可在线预订',
+    notBookableOnline: '不可在线预订：请联系商家预订此服务。',
     practitioner: '技师',
     anyPractitioner: '不限',
     withPractitioner: '由 {{name}}',

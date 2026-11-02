@@ -143,7 +143,7 @@ export const en: Translations = {
     slotTaken: 'This time slot was just booked or is no longer available. Please choose another time.',
   },
   booking: {
-    notBookableOnline: 'Not bookable online',
+    notBookableOnline: 'Not bookable online: contact the establishment to book this service.',
     practitioner: 'Practitioner',
     anyPractitioner: 'No preference',
     withPractitioner: 'with {{name}}',

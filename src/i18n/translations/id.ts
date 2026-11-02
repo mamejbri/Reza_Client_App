@@ -143,7 +143,7 @@ export const id: Translations = {
     slotTaken: 'Jadwal ini baru saja dipesan atau sudah tidak tersedia. Silakan pilih waktu lain.',
   },
   booking: {
-    notBookableOnline: 'Tidak dapat dipesan online',
+    notBookableOnline: 'Tidak dapat dipesan online: hubungi tempat usaha untuk memesan layanan ini.',
     practitioner: 'Terapis',
     anyPractitioner: 'Siapa saja',
     withPractitioner: 'dengan {{name}}',

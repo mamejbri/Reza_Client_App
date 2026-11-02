@@ -143,7 +143,7 @@ export const pt: Translations = {
     slotTaken: 'Este horário acabou de ser reservado ou não está mais disponível. Escolha outro horário.',
   },
   booking: {
-    notBookableOnline: 'Não reservável online',
+    notBookableOnline: 'Não reservável online: contacte o estabelecimento para reservar este serviço.',
     practitioner: 'Profissional',
     anyPractitioner: 'Sem preferência',
     withPractitioner: 'com {{name}}',
