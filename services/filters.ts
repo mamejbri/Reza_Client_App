@@ -1,4 +1,5 @@
 import { API } from "../src/config/env";
+import { CONTENT_LANG_HEADER, getContentLanguage } from "../src/i18n/contentLanguage";
 
 export interface FilterOption {
   id: number;
@@ -15,7 +16,7 @@ export type FilterGroup = {
 
 export async function fetchFilterGroups(type: string): Promise<FilterGroup[]> {
   const url = `${API.BASE_URL}/filters/by-business-type?businessType=${type.toUpperCase()}`;
-  const res = await fetch(url);
+  const res = await fetch(url, { headers: { [CONTENT_LANG_HEADER]: getContentLanguage() } });
 console.log("CALLING:", url);
 
   if (!res.ok) {
@@ -29,7 +30,7 @@ console.log("CALLING:", url);
 
 export async function fetchMyFilters(): Promise<FilterOption[]> {
   const url = `${API.BASE_URL}/filters/me`;
-  const res = await fetch(url);
+  const res = await fetch(url, { headers: { [CONTENT_LANG_HEADER]: getContentLanguage() } });
   if (!res.ok) throw new Error("Unable to fetch selected filters");
   return res.json();
 }

@@ -30,6 +30,7 @@ import {
   languageInfo,
 } from './languages';
 import { TRANSLATIONS } from './translations';
+import { setContentLanguage } from './contentLanguage';
 
 const LANG_KEY = 'reza_lang';
 const CURRENCY_KEY = 'reza_currency';
@@ -92,6 +93,7 @@ export function translate(key: string, params?: Params): string {
 
 function applyLanguageGlobals(lang: Lang) {
   currentLang = lang;
+  setContentLanguage(lang);
   dayjs.locale(languageInfo(lang).dayjs);
   configureCalendarLocale(lang, lookup(TRANSLATIONS[lang], 'calendar.today') ?? '');
 }
