@@ -82,8 +82,9 @@ android {
         applicationId "com.rezavp"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
-        versionCode 1
-        versionName "1.0"
+        // Play Store builds up to 1.0.4 (versionCode 4) were shipped: always increase versionCode.
+        versionCode 5
+        versionName "1.0.5"
         // Google "Maps SDK for Android" key, kept out of git: set REZA_MAPS_API_KEY in
         // ~/.gradle/gradle.properties or as an environment variable.
         manifestPlaceholders = [
@@ -97,15 +98,30 @@ android {
             keyAlias 'androiddebugkey'
             keyPassword 'android'
         }
+        // Play upload key, kept out of git: put the keystore in android/app/ (ignored by
+        // *.keystore) and set MYAPP_UPLOAD_STORE_FILE, MYAPP_UPLOAD_KEY_ALIAS,
+        // MYAPP_UPLOAD_STORE_PASSWORD and MYAPP_UPLOAD_KEY_PASSWORD in ~/.gradle/gradle.properties.
+        if (project.hasProperty('MYAPP_UPLOAD_STORE_FILE')) {
+            release {
+                storeFile file(MYAPP_UPLOAD_STORE_FILE)
+                storePassword MYAPP_UPLOAD_STORE_PASSWORD
+                keyAlias MYAPP_UPLOAD_KEY_ALIAS
+                keyPassword MYAPP_UPLOAD_KEY_PASSWORD
+            }
+        }
     }
     buildTypes {
         debug {
             signingConfig signingConfigs.debug
         }
         release {
-            // Caution! In production, you need to generate your own keystore file.
-            // see https://reactnative.dev/docs/signed-apk-android.
-            signingConfig signingConfigs.debug
+            // Without the upload key the build is debug-signed: fine on a device, refused by Play.
+            if (signingConfigs.findByName('release') != null) {
+                signingConfig signingConfigs.release
+            } else {
+                logger.warn("MYAPP_UPLOAD_STORE_FILE not set: release build signed with the DEBUG key (Play will refuse it)")
+                signingConfig signingConfigs.debug
+            }
             minifyEnabled enableProguardInReleaseBuilds
             proguardFiles getDefaultProguardFile("proguard-android.txt"), "proguard-rules.pro"
         }
