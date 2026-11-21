@@ -32,17 +32,17 @@ const categories = [
   {
     id: '1',
     type: EstablishmentType.RESTAURANT,
-    image: require('../../assets/images/restaurant-bg.png'),
+    image: require('../../assets/images/restaurant-bg.jpg'),
   },
   {
     id: '2',
     type: EstablishmentType.SPA,
-    image: require('../../assets/images/coiffeur-bg.png'),
+    image: require('../../assets/images/coiffeur-bg.jpg'),
   },
   {
     id: '3',
     type: EstablishmentType.ACTIVITY,
-    image: require('../../assets/images/activites-bg.png'),
+    image: require('../../assets/images/activites-bg.jpg'),
   },
 ];
 
