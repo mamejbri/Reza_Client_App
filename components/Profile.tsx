@@ -10,7 +10,7 @@ import AppIcon from '../src/icons/AppIcon';
 import ChangePasswordModal from '../components/ChangePasswordModal';
 import { logout } from '../services/auth';
 import { clearCachedUser } from '../services/user'; // keep if you rely on it elsewhere
-import { getClientProfile, updateClientProfile } from '../services/clients';
+import { deleteMyAccount, getClientProfile, updateClientProfile } from '../services/clients';
 import { useI18n } from '../src/i18n/LocaleProvider';
 import { useResponsive } from '../src/utils/responsive';
 
@@ -31,6 +31,7 @@ const Profile: React.FC = () => {
   const [editing, setEditing] = useState(false);
   const [loading, setLoading] = useState(false);
   const [passwordModalVisible, setPasswordModalVisible] = useState(false);
+  const [deleting, setDeleting] = useState(false);
 
   const [originalFirstName, setOriginalFirstName] = useState('');
   const [originalLastName, setOriginalLastName] = useState('');
@@ -58,13 +59,38 @@ const Profile: React.FC = () => {
     return unsub;
   }, [hydrate, navigation]);
 
-  const handleLogout = async () => {
+  const signOutLocally = async () => {
     await logout();
     await clearCachedUser?.();
     // wipe local UI instantly
     setEmail(''); setPhone(''); setFirstName(''); setLastName(''); setPhoto(undefined);
     setEditing(false);
+  };
+
+  const handleLogout = async () => {
+    await signOutLocally();
     Alert.alert(t('profile.loggedOutTitle'), t('profile.loggedOut'));
+    navigation.reset({ index: 0, routes: [{ name: 'Home' }] });
+  };
+
+  // App Store guideline 5.1.1(v): the account can be deleted from inside the app.
+  const confirmDeleteAccount = () => {
+    Alert.alert(t('profile.deleteConfirmTitle'), t('profile.deleteConfirm'), [
+      { text: t('common.cancel'), style: 'cancel' },
+      { text: t('profile.deleteConfirmButton'), style: 'destructive', onPress: handleDeleteAccount },
+    ]);
+  };
+
+  const handleDeleteAccount = async () => {
+    setDeleting(true);
+    const ok = await deleteMyAccount();
+    setDeleting(false);
+    if (!ok) {
+      Alert.alert(t('common.error'), t('profile.deleteError'));
+      return;
+    }
+    await signOutLocally();
+    Alert.alert(t('profile.deletedTitle'), t('profile.deleted'));
     navigation.reset({ index: 0, routes: [{ name: 'Home' }] });
   };
 
@@ -203,6 +229,16 @@ const Profile: React.FC = () => {
             </View>
             <Text style={styles.menuText}>{t('profile.changePassword')}</Text>
             <AppIcon name={I18nManager.isRTL ? 'chevron-back' : 'chevron-forward'} size={18} color={MUTED} />
+          </TouchableOpacity>
+          <View style={styles.menuDivider} />
+          <TouchableOpacity onPress={confirmDeleteAccount} disabled={deleting} activeOpacity={0.7} style={styles.menuRow}>
+            <View style={styles.menuIcon}>
+              <AppIcon name="trash-outline" size={18} color={BRAND} />
+            </View>
+            <Text style={styles.menuText}>{t('profile.deleteAccount')}</Text>
+            {deleting
+              ? <ActivityIndicator color={BRAND} />
+              : <AppIcon name={I18nManager.isRTL ? 'chevron-back' : 'chevron-forward'} size={18} color={MUTED} />}
           </TouchableOpacity>
           <View style={styles.menuDivider} />
           <TouchableOpacity onPress={handleLogout} activeOpacity={0.7} style={styles.menuRow}>

@@ -46,6 +46,16 @@ export async function getClientProfile(): Promise<ClientProfileResponse | null> 
   }
 }
 
+/** 🔹 Permanently delete the signed-in client's account (DELETE /clients/me) */
+export async function deleteMyAccount(): Promise<boolean> {
+  try {
+    await http.delete("/clients/me");
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 /** 🔹 Update current client profile (PUT /clients/me) */
 export async function updateClientProfile(
   payload: UpdateClientProfileRequest

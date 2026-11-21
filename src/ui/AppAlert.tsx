@@ -45,7 +45,7 @@ type Tone = 'success' | 'error' | 'info';
 /** The tone (icon + color) is inferred from the translated titles the app already uses. */
 const toneOf = (title: string): Tone => {
   const is = (...keys: string[]) => keys.some((k) => translate(k) === title);
-  if (is('common.success', 'establishment.confirmedTitle', 'profile.loggedOutTitle')) return 'success';
+  if (is('common.success', 'establishment.confirmedTitle', 'profile.loggedOutTitle', 'profile.deletedTitle')) return 'success';
   if (is('common.error', 'establishment.slotTakenTitle')) return 'error';
   return 'info';
 };
